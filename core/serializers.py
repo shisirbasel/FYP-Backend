@@ -20,3 +20,15 @@ class UserSerializer(serializers.ModelSerializer):
         extra_kwargs = {
             'password': {'write_only': True}
         }
+
+class ProfilePictureSerializer(serializers.ModelSerializer):
+    profile_picture = serializers.ImageField(required=False) 
+    
+    class Meta:
+        model = get_user_model()
+        fields = ["profile_picture"]
+    
+    def save(self,user,data):
+        user.profile_picture = data.get("profile_picture")
+        user.save()
+        return user

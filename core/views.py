@@ -1,6 +1,6 @@
 from rest_framework.decorators import APIView
 from rest_framework.response import Response
-from core.serializers import UserSerializer
+from core.serializers import UserSerializer,ProfilePictureSerializer
 from core.models import User, Book
 
 class RegisterUserView(APIView):
@@ -16,3 +16,12 @@ class ShowUsersView(APIView):
         users = User.objects.all()
         serializer = UserSerializer(users, many=True)
         return Response(serializer.data, status=200)
+
+class UploadProfilePictureView(APIView):
+    def patch(self,request,id):
+        user = request.user 
+        serializer = ProfilePictureSerializer(instance=user, data = request.data)
+        if serializer.is_valid():
+            serializer.save(user,request.data)
+            return Response(serializer.data, status=200)
+        return Response(serializer.errors, status=400)
