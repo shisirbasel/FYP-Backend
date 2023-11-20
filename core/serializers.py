@@ -21,6 +21,10 @@ class UserSerializer(serializers.ModelSerializer):
             'password': {'write_only': True}
         }
 
+class LoginSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    password = serializers.CharField()
+
 class ProfilePictureSerializer(serializers.ModelSerializer):
     profile_picture = serializers.ImageField(required=False) 
     
