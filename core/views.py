@@ -1,6 +1,6 @@
 from rest_framework.decorators import APIView
 from rest_framework.response import Response
-from core.serializers import UserSerializer,ProfilePictureSerializer,LoginSerializer
+from core.serializers import UserSerializer,ProfilePictureSerializer,LoginSerializer,BookSerializer
 from core.models import User, Book
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -53,3 +53,11 @@ class LoginUserView(APIView):
 
         except Exception as e:
             return Response(f"Error Occurred, Exception:{e}")
+        
+class AddBookView(APIView):
+    def post(self,request):
+        serializer = BookSerializer(data = request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status = 201)
+        return Response(serializer.errors, status=400)

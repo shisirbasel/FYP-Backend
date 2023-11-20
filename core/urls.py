@@ -1,10 +1,11 @@
 from django.urls import path
-from core.views import RegisterUserView,ShowUsersView,UploadProfilePictureView, LoginUserView
+from core.views import RegisterUserView,ShowUsersView,UploadProfilePictureView, LoginUserView, AddBookView
 
 urlpatterns = [
     path('register/',RegisterUserView.as_view(),name="register"),
     path('users/',ShowUsersView.as_view(),name="show_users"),
     path('login/',LoginUserView.as_view(),name="login"),
     path('profile_picture/<int:id>/',UploadProfilePictureView.as_view(),name="profile_picture"),
+    path('add_book/',AddBookView.as_view(),name="add_book"),
 
 ]

@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
+from core.models import Book
 
 class UserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
@@ -36,3 +37,13 @@ class ProfilePictureSerializer(serializers.ModelSerializer):
         user.profile_picture = data.get("profile_picture")
         user.save()
         return user
+
+class BookSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Book
+        fields = [ 'title',
+                    'author',
+                    'is_traded',
+                    'genre',
+                    'upload_date' 
+                    ]
