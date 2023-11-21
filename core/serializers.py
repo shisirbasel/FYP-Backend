@@ -52,3 +52,7 @@ class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model =get_user_model()
         fields = "__all__"
+
+class UpdatePasswordSerializer(serializers.Serializer):
+    old_password = serializers.CharField(required=True)
+    new_password = serializers.CharField(required=True)

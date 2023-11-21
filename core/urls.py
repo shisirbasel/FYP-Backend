@@ -1,13 +1,14 @@
 from django.urls import path
 from core.views import RegisterUserView,ShowUsersView,UploadProfilePictureView, LoginUserView, AddBookView, \
-            UpdateBookView,ShowBooksView,DeleteBookView,ShowProfileView,UpdateProfileView
+            UpdateBookView,ShowBooksView,DeleteBookView,ShowProfileView,UpdateProfileView,UpdatePasswordView
 
 urlpatterns = [
     path('register/',RegisterUserView.as_view(),name="register"),
     path('users/',ShowUsersView.as_view(),name="show_users"),
     path('login/',LoginUserView.as_view(),name="login"),
     path('profile_picture/<int:id>/',UploadProfilePictureView.as_view(),name="profile_picture"),
-    path('update_profile/<int:id>/',UpdateProfileView.as_view(),name="update_profile"),
+    path('update_profile/<int:id>/',UpdateProfileView.as_view(),name="update_profile"),    path('update_password/',UpdatePasswordView.as_view(),name="update_password"),
+    path('update_password/',UpdatePasswordView.as_view(),name="update_password"),
     path('profile/<int:id>/',ShowProfileView.as_view(),name="show_profile"),
     path('add_book/',AddBookView.as_view(),name="add_book"),
     path('update_book/<int:id>/',UpdateBookView.as_view(),name="update_book"),
