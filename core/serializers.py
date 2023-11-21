@@ -47,3 +47,8 @@ class BookSerializer(serializers.ModelSerializer):
                     'genre',
                     'upload_date' 
                     ]
+
+class ProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model =get_user_model()
+        fields = "__all__"

@@ -1,6 +1,7 @@
 from rest_framework.decorators import APIView
 from rest_framework.response import Response
-from core.serializers import UserSerializer,ProfilePictureSerializer,LoginSerializer,BookSerializer
+from core.serializers import UserSerializer,ProfilePictureSerializer,LoginSerializer,BookSerializer, \
+    ProfileSerializer
 from core.models import User, Book
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -83,3 +84,9 @@ class DeleteBookView(APIView):
         book = get_object_or_404(Book,id=id)
         book.delete()
         return Response(f"Book with id: {id} has been Deleted..")
+    
+class ShowProfileView(APIView):
+    def get(self,request,id):
+        user = get_object_or_404(User,id=id)
+        serializer = ProfileSerializer(user,many = False)
+        return Response(serializer.data)
