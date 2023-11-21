@@ -1,5 +1,6 @@
 from django.urls import path
-from core.views import RegisterUserView,ShowUsersView,UploadProfilePictureView, LoginUserView, AddBookView
+from core.views import RegisterUserView,ShowUsersView,UploadProfilePictureView, LoginUserView, AddBookView, \
+            UpdateBookView
 
 urlpatterns = [
     path('register/',RegisterUserView.as_view(),name="register"),
@@ -7,5 +8,5 @@ urlpatterns = [
     path('login/',LoginUserView.as_view(),name="login"),
     path('profile_picture/<int:id>/',UploadProfilePictureView.as_view(),name="profile_picture"),
     path('add_book/',AddBookView.as_view(),name="add_book"),
-
+    path('update_book/<int:id>/',UpdateBookView.as_view(),name="update_book"),
 ]
