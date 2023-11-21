@@ -90,3 +90,12 @@ class ShowProfileView(APIView):
         user = get_object_or_404(User,id=id)
         serializer = ProfileSerializer(user,many = False)
         return Response(serializer.data)
+    
+class UpdateProfileView(APIView):
+    def patch(self,request):
+        user = request.user
+        serializer = ProfileSerializer(instance=user, data = request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data,status=200)
+        return Response(serializer.errors, status=400)
