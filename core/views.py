@@ -4,6 +4,7 @@ from core.serializers import UserSerializer,ProfilePictureSerializer,LoginSerial
 from core.models import User, Book
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
+from django.shortcuts import get_object_or_404
 
 
 class RegisterUserView(APIView):
@@ -60,4 +61,13 @@ class AddBookView(APIView):
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status = 201)
+        return Response(serializer.errors, status=400)
+
+class UpdateBookView(APIView):
+    def patch(self,request,id):
+        book = get_object_or_404(Book, id = id)
+        serializer = BookSerializer(instance=book, data = request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data,status=200)
         return Response(serializer.errors, status=400)
