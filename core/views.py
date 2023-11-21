@@ -1,7 +1,7 @@
 from rest_framework.decorators import APIView
 from rest_framework.response import Response
 from core.serializers import UserSerializer,ProfilePictureSerializer,LoginSerializer,BookSerializer, \
-    ProfileSerializer
+    ProfileSerializer,UpdatePasswordSerializer   
 from core.models import User, Book
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -98,4 +98,16 @@ class UpdateProfileView(APIView):
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data,status=200)
+        return Response(serializer.errors, status=400)
+
+class UpdatePasswordView(APIView):
+    def patch(self, request):
+        user = request.user
+        serializer = UpdatePasswordSerializer(data=request.data)
+        if serializer.is_valid():
+            if user.check_password(serializer.validated_data.get('old_password')):
+                user.set_password(serializer.validated_data.get('new_password'))
+                user.save()
+                return Response({"message": "Password Changed Successfully"}, status=200)
+            return Response({"error": "Invalid Password"}, status=400)
         return Response(serializer.errors, status=400)
