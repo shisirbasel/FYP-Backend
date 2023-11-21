@@ -76,4 +76,10 @@ class ShowBooksView(APIView):
     def get(self,request):
         data = Book.objects.all()
         serializer = BookSerializer(data, many = True)
-        return Response(serializer.data) 
+        return Response(serializer.data)
+    
+class DeleteBookView(APIView):
+    def delete(self,request,id):
+        book = get_object_or_404(Book,id=id)
+        book.delete()
+        return Response(f"Book with id: {id} has been Deleted..")
