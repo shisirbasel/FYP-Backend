@@ -71,3 +71,9 @@ class UpdateBookView(APIView):
             serializer.save()
             return Response(serializer.data,status=200)
         return Response(serializer.errors, status=400)
+    
+class ShowBooksView(APIView):
+    def get(self,request):
+        data = Book.objects.all()
+        serializer = BookSerializer(data, many = True)
+        return Response(serializer.data) 
