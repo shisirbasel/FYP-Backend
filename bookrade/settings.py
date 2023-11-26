@@ -12,6 +12,9 @@ https://docs.djangoproject.com/en/4.1/ref/settings/
 from datetime import timedelta
 from pathlib import Path
 
+import environ
+
+env = environ.Env()
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -56,11 +59,16 @@ INSTALLED_APPS = [
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
-    )
+    ),
+    'DEFAULT_PARSER_CLASSES': [
+        'rest_framework.parsers.JSONParser',
+        # Add other parsers if needed
+    ],
 }
 
+
 SIMPLE_IWT = {
-    "ACCESS_TOKEN__LIFETIME":timedelta(minutes=5),
+    "ACCESS_TOKEN__LIFETIME":timedelta(days=1),
     "REFRESH_TOKEN__LIFETIME":timedelta(days=7)
 }
 
@@ -151,3 +159,10 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # For media
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media/'
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_HOST_USER ="bookrade.mails@gmail.com"
+EMAIL_HOST_PASSWORD ="wcvtfovmkktdeleg"
+EMAIL_USE_TLS = True

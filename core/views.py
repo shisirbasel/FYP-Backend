@@ -6,6 +6,8 @@ from core.models import User, Book
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.shortcuts import get_object_or_404
+from rest_framework.permissions import IsAuthenticated
+from core.emails import send_otp
 
 
 class RegisterUserView(APIView):
@@ -13,6 +15,7 @@ class RegisterUserView(APIView):
         serializer = UserSerializer(data = request.data)
         if serializer.is_valid():
             serializer.save()
+            send_otp(serializer.data['email'])
             return Response(serializer.data, status=201)
         return Response(serializer.errors, status=400)
 
@@ -49,7 +52,7 @@ class LoginUserView(APIView):
                 return Response({
                     'refresh': str(refresh),
                     'access': str(refresh.access_token),
-                })
+                },status=200)
             
             return Response(serializer.errors, status=400)
 
@@ -57,10 +60,12 @@ class LoginUserView(APIView):
             return Response(f"Error Occurred, Exception:{e}")
         
 class AddBookView(APIView):
+    permission_classes = [IsAuthenticated]
+
     def post(self,request):
         serializer = BookSerializer(data = request.data)
         if serializer.is_valid():
-            serializer.save()
+            serializer.save(user = self.request.user)
             return Response(serializer.data, status = 201)
         return Response(serializer.errors, status=400)
 
@@ -93,7 +98,7 @@ class ShowProfileView(APIView):
     
 class UpdateProfileView(APIView):
     def patch(self,request):
-        user = request.user
+        user = self.request.user
         serializer = ProfileSerializer(instance=user, data = request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
@@ -102,7 +107,7 @@ class UpdateProfileView(APIView):
 
 class UpdatePasswordView(APIView):
     def patch(self, request):
-        user = request.user
+        user = self.request.user
         serializer = UpdatePasswordSerializer(data=request.data)
         if serializer.is_valid():
             if user.check_password(serializer.validated_data.get('old_password')):
@@ -111,3 +116,5 @@ class UpdatePasswordView(APIView):
                 return Response({"message": "Password Changed Successfully"}, status=200)
             return Response({"error": "Invalid Password"}, status=400)
         return Response(serializer.errors, status=400)
+
+
