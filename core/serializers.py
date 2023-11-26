@@ -12,6 +12,8 @@ class UserSerializer(serializers.ModelSerializer):
             first_name=validated_data.get('first_name', ""),
             last_name=validated_data.get('last_name', ""),
         )
+
+        
         user.save()
         return user
 
@@ -39,15 +41,20 @@ class ProfilePictureSerializer(serializers.ModelSerializer):
         return user
 
 class BookSerializer(serializers.ModelSerializer):
+
     class Meta:
         model = Book
         fields = [ 'title',
                     'author',
                     'is_traded',
                     'genre',
-                    'upload_date' 
+                    'upload_date',
+                    'user'
                     ]
+        
+        read_only_fields = ['user']
 
+    
 class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model =get_user_model()
@@ -56,3 +63,5 @@ class ProfileSerializer(serializers.ModelSerializer):
 class UpdatePasswordSerializer(serializers.Serializer):
     old_password = serializers.CharField(required=True)
     new_password = serializers.CharField(required=True)
+
+
