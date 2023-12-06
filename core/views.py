@@ -8,7 +8,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.shortcuts import get_object_or_404
 from rest_framework.permissions import IsAuthenticated
 from core.emails import send_otp
-
+from rest_framework.parsers import MultiPartParser
 
 class RegisterUserView(APIView):
     def post(self,request):
@@ -60,7 +60,9 @@ class LoginUserView(APIView):
             return Response(f"Error Occurred, Exception:{e}")
         
 class AddBookView(APIView):
+
     permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser]
 
     def post(self,request):
         serializer = BookSerializer(data = request.data)
@@ -116,5 +118,6 @@ class UpdatePasswordView(APIView):
                 return Response({"message": "Password Changed Successfully"}, status=200)
             return Response({"error": "Invalid Password"}, status=400)
         return Response(serializer.errors, status=400)
+
 
 

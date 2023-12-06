@@ -49,7 +49,8 @@ class BookSerializer(serializers.ModelSerializer):
                     'is_traded',
                     'genre',
                     'upload_date',
-                    'user'
+                    'user',
+                    'image',
                     ]
         
         read_only_fields = ['user']
