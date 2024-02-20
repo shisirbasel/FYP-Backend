@@ -42,6 +42,8 @@ class User(AbstractBaseUser, PermissionsMixin):
     objects = UserManager()
     USERNAME_FIELD = 'email'
     genre = models.ManyToManyField(Genre,blank=True)
+    otp = models.CharField(max_length=4, null=True)
+    is_verified = models.BooleanField(default=False)
 
     def full_name(self):
         return f"{self.first_name} {self.last_name}"

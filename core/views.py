@@ -1,7 +1,7 @@
 from rest_framework.decorators import APIView
 from rest_framework.response import Response
 from core.serializers import UserSerializer,ProfilePictureSerializer,LoginSerializer,BookSerializer, \
-    ProfileSerializer,UpdatePasswordSerializer   
+    ProfileSerializer,UpdatePasswordSerializer, VerifyAccountSerializer  
 from core.models import User, Book
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -16,7 +16,11 @@ class RegisterUserView(APIView):
         if serializer.is_valid():
             serializer.save()
             send_otp(serializer.data['email'])
-            return Response(serializer.data, status=201)
+            data = {
+                'message': 'User Registered Successfully',
+                'data': serializer.data
+            }
+            return Response(data, status=201)
         return Response(serializer.errors, status=400)
 
 class ShowUsersView(APIView):
@@ -36,28 +40,27 @@ class UploadProfilePictureView(APIView):
 
 class LoginUserView(APIView):
     def post(self,request):
-        try:
-            serializer = LoginSerializer(data = request.data)
-            if serializer.is_valid():
-                email = serializer.data['email']
-                password = serializer.data['password']
+        serializer = LoginSerializer(data = request.data)
+        if serializer.is_valid():
+            email = serializer.data['email']
+            password = serializer.data['password']
 
-                user = authenticate(email = email, password = password)
-                
-                if user is None:
-                    return Response(serializer.errors, status=400)
-                
-                refresh = RefreshToken.for_user(user)
-
-                return Response({
-                    'refresh': str(refresh),
-                    'access': str(refresh.access_token),
-                },status=200)
+            user = authenticate(email = email, password = password)
             
-            return Response(serializer.errors, status=400)
+            if user is None:
+                return Response(serializer.errors, status=400)
+            
+            # if not user.is_verified:
+            #     return Response("Please Verify Your Account First", status=400)
+            
+            refresh = RefreshToken.for_user(user)
 
-        except Exception as e:
-            return Response(f"Error Occurred, Exception:{e}")
+            return Response({
+                'refresh': str(refresh),
+                'access': str(refresh.access_token),
+            },status=200)
+        
+        return Response(serializer.errors, status=400)
         
 class AddBookView(APIView):
 
@@ -68,8 +71,18 @@ class AddBookView(APIView):
         serializer = BookSerializer(data = request.data)
         if serializer.is_valid():
             serializer.save(user = self.request.user)
-            return Response(serializer.data, status = 201)
-        return Response(serializer.errors, status=400)
+            data = {
+                'message': 'Book Added Successfully',
+                'data': serializer.data,
+                'status':201
+            }
+            return Response(data)
+        data = {
+            "message":"Invalid Input",
+            "status":400,
+            "errors":serializer.errors
+        }
+        return Response(data)
 
 class UpdateBookView(APIView):
     def patch(self,request,id):
@@ -119,5 +132,45 @@ class UpdatePasswordView(APIView):
             return Response({"error": "Invalid Password"}, status=400)
         return Response(serializer.errors, status=400)
 
+class VerifyOTPView(APIView):
 
+    def post(self,request):
+        serializer = VerifyAccountSerializer(data=request.data)
+        if serializer.is_valid():
+            email = serializer.data['email']
+            otp = serializer.data['otp']
+
+            user = User.objects.filter(email=email)
+            if not user.exists():
+                return Response(
+                    {
+                        'status':'400',
+                        'message':'Invalid Email'
+                    }
+                )
+
+            if user[0].otp != otp:
+                return Response(
+                    {
+                        'status':'400',
+                        'message':'Invalid OTP'
+                    }
+                )
+
+            user = user.first()
+            user.is_verified = True
+            user.save()
+            return Response(
+                    {
+                        'status':'200',
+                        'message':'account verified'
+                    }
+                )
+
+        return Response(
+                    {
+                        'status':'400',
+                        'data': serializer.errors
+                    }
+                )
 

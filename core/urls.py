@@ -1,6 +1,6 @@
 from django.urls import path
 from core.views import RegisterUserView,ShowUsersView,UploadProfilePictureView, LoginUserView, AddBookView, \
-            UpdateBookView,ShowBooksView,DeleteBookView,ShowProfileView,UpdateProfileView,UpdatePasswordView
+            UpdateBookView,ShowBooksView,DeleteBookView,ShowProfileView,UpdateProfileView,UpdatePasswordView,VerifyOTPView
 
 urlpatterns = [
     path('register/',RegisterUserView.as_view(),name="register"),
@@ -15,4 +15,5 @@ urlpatterns = [
     path('update_book/<int:id>/',UpdateBookView.as_view(),name="update_book"),
     path('show_books/',ShowBooksView.as_view(),name="show_books"),
     path('delete_book/<int:id>/',DeleteBookView.as_view(),name="delete_book"),
+    path('verify_account/',VerifyOTPView.as_view(),name="verify_otp"),
 ]

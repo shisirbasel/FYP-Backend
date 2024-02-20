@@ -44,7 +44,6 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_simplejwt',
     'corsheaders',
-
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -68,7 +67,7 @@ REST_FRAMEWORK = {
 
 
 SIMPLE_IWT = {
-    "ACCESS_TOKEN__LIFETIME":timedelta(days=1),
+    "ACCESS_TOKEN__LIFETIME":timedelta(minutes=59),
     "REFRESH_TOKEN__LIFETIME":timedelta(days=7)
 }
 

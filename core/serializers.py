@@ -13,7 +13,6 @@ class UserSerializer(serializers.ModelSerializer):
             last_name=validated_data.get('last_name', ""),
         )
 
-        
         user.save()
         return user
 
@@ -40,20 +39,15 @@ class ProfilePictureSerializer(serializers.ModelSerializer):
         user.save()
         return user
 
-class BookSerializer(serializers.ModelSerializer):
 
+class BookSerializer(serializers.ModelSerializer):
+    
+    username = serializers.CharField(source='user.username', read_only=True)
     class Meta:
         model = Book
-        fields = [ 'title',
-                    'author',
-                    'is_traded',
-                    'genre',
-                    'upload_date',
-                    'user',
-                    'image',
-                    ]
-        
-        read_only_fields = ['user']
+        fields = ['title', 'author', 'is_traded', 'genre', 'upload_date', 'user', 'username', 'image']
+        read_only_fields = ['user', 'username']
+
 
     
 class ProfileSerializer(serializers.ModelSerializer):
@@ -65,4 +59,6 @@ class UpdatePasswordSerializer(serializers.Serializer):
     old_password = serializers.CharField(required=True)
     new_password = serializers.CharField(required=True)
 
-
+class VerifyAccountSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    otp = serializers.CharField()
