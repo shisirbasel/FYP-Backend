@@ -42,8 +42,9 @@ CORS_ALLOWED_ORIGINS = [
 
 INSTALLED_APPS = [
     'rest_framework',
-    'rest_framework_simplejwt',
     'corsheaders',
+    'rest_framework_simplejwt',
+
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -56,6 +57,7 @@ INSTALLED_APPS = [
 ]
 
 REST_FRAMEWORK = {
+
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
@@ -65,10 +67,9 @@ REST_FRAMEWORK = {
     ],
 }
 
-
-SIMPLE_IWT = {
-    "ACCESS_TOKEN__LIFETIME":timedelta(minutes=59),
-    "REFRESH_TOKEN__LIFETIME":timedelta(days=7)
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60), 
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=30) 
 }
 
 MIDDLEWARE = [

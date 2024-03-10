@@ -53,10 +53,16 @@ class User(AbstractBaseUser, PermissionsMixin):
 
 '''user model'''
 
+class Author(models.Model):
+    author = models.CharField(max_length = 100)
+
+    def __str__(self):
+        return self.author
+
 class Book(models.Model):
     user = models.ForeignKey(User,on_delete=models.DO_NOTHING)
     title = models.CharField(max_length=100)
-    author = models.CharField(max_length=100)
+    author = models.ForeignKey(Author, on_delete = models.DO_NOTHING)
     is_traded = models.BooleanField(default=False)
     genre = models.ManyToManyField(Genre,blank=True)
     upload_date = models.DateTimeField(auto_now_add=True)
@@ -64,3 +70,45 @@ class Book(models.Model):
 
     def __str__(self):
         return self.title
+    
+class Report(models.Model):
+    class ReportType(models.TextChoices):
+        SPAM = 'SP', 'Spam'
+        INAPPROPRIATE_CONTENT = 'IC', 'Inappropriate Content'
+        DIDNOT_APPEAR = "DA", "Didnot Appear"
+        FAKE_BOOK = "FB", "Fake Book"
+
+    reported_by = models.ForeignKey(User, on_delete=models.DO_NOTHING, related_name='reports_submitted')
+    reported_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reports_received')
+    type = models.CharField(max_length=2, choices=ReportType.choices)
+    report_date = models.DateTimeField(auto_now_add=True)
+    description = models.TextField()
+
+    def __str__(self):
+        return f"{self.reported_by} to {self.reported_user}"
+
+class Like(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    book = models.ForeignKey(Book, on_delete=models.CASCADE)
+    liked_date = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'book')  
+
+    def __str__(self):
+        return f"{self.user.email} liked {self.book.title}"
+    
+class TradeRequest(models.Model):
+    class RequestStatus(models.TextChoices):
+        PENDING = "P", "Pending"
+        ACCEPTED = "A", "Accepted"
+        REJECTED = "R", "Rejected"
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='trade_requests')
+    requested_book = models.ForeignKey(Book, on_delete=models.CASCADE, related_name='requested_trade_requests')
+    offered_book = models.ForeignKey(Book, on_delete=models.CASCADE, related_name='offered_trade_requests')
+    request_date = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(max_length=1, choices=RequestStatus.choices, default=RequestStatus.PENDING)
+
+    class Meta:
+        unique_together = ('user', 'requested_book')
