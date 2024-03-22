@@ -1,6 +1,5 @@
 from rest_framework import serializers
-from django.contrib.auth import get_user_model
-from core.models import Book, Genre, User
+from core.models import Book, Genre, User, TradeRequest
 
 
 class GetGenresSerializer(serializers.ModelSerializer):
@@ -12,7 +11,7 @@ class UserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
 
     def create(self, validated_data):
-        user = get_user_model().objects.create_user(
+        user = User.objects.create_user(
             email=validated_data['email'],
             password=validated_data['password'],
             first_name=validated_data.get('first_name', ""),
@@ -24,7 +23,7 @@ class UserSerializer(serializers.ModelSerializer):
         return user
 
     class Meta:
-        model = get_user_model()
+        model = User
         fields = ['email', 'password', 'first_name', 'last_name','username']  
         extra_kwargs = {
             'password': {'write_only': True}
@@ -38,7 +37,7 @@ class ProfilePictureSerializer(serializers.ModelSerializer):
     profile_picture = serializers.ImageField(required=False) 
     
     class Meta:
-        model = get_user_model()
+        model = User
         fields = ["profile_picture"]
     
     def save(self,user,data):
@@ -51,7 +50,7 @@ class BookSerializer(serializers.ModelSerializer):
     class Meta:
 
         model = Book
-        fields = ['title', 'author', 'is_traded', 'genre', 'upload_date', 'user', 'image']
+        fields = ['title', 'author', 'genre', 'upload_date', 'user', 'image']
         read_only_fields = ['user']
 
 class ShowBookSerializer(serializers.ModelSerializer):
@@ -63,7 +62,7 @@ class ShowBookSerializer(serializers.ModelSerializer):
 class ProfileSerializer(serializers.ModelSerializer):
     
     class Meta:
-        model = get_user_model()
+        model = User
         fields = ['first_name','last_name','username','email','profile_picture','genre']
         read_only_fields = ['profile_picture']
 
@@ -86,4 +85,22 @@ class LikeBookSerializer(serializers.Serializer):
             raise serializers.ValidationError("Invalid book ID")
 
         return value
+
+class TradeRequestSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TradeRequest
+        fields = ['user', 'requested_book', 'offered_book']
+        read_only_fields = ['user']
+
+    def validate(self, data):
+        user = self.context['request'].user
+        requested_book = data['requested_book']
+        
+        existing_trade_request = TradeRequest.objects.filter(user=user, requested_book=requested_book).exists()
+
+        if existing_trade_request:
+            raise serializers.ValidationError("You have already sent a trade request for this book combination.")
+        
+        return data
+    
 

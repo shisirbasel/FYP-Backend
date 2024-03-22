@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import User, Book, Genre, Report, Like, TradeRequest, Author
+from .models import User, Book, Genre, Report, Like, TradeRequest
 
 class UserAdmin(admin.ModelAdmin):
     list_display = ('email', 'first_name', 'last_name', 'is_staff', 'date_joined')
@@ -41,6 +41,3 @@ class TradeRequestAdmin(admin.ModelAdmin):
     list_filter = ('request_date', 'status')
 
 admin.site.register(TradeRequest, TradeRequestAdmin)
-
-
-admin.site.register(Author)

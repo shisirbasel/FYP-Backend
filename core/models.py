@@ -38,7 +38,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_staff = models.BooleanField(default=False)
     date_joined = models.DateTimeField(auto_now_add=True)
     profile_picture = models.ImageField(upload_to="profile_pictures/", blank=True, null=True, default=None)
-    username = models.CharField(max_length=100)
+    username = models.CharField(max_length=100,unique=True)
     objects = UserManager()
     USERNAME_FIELD = 'email'
     genre = models.ManyToManyField(Genre,blank=True)
@@ -53,20 +53,16 @@ class User(AbstractBaseUser, PermissionsMixin):
 
 '''user model'''
 
-class Author(models.Model):
-    author = models.CharField(max_length = 100)
 
-    def __str__(self):
-        return self.author
 
 class Book(models.Model):
     user = models.ForeignKey(User,on_delete=models.DO_NOTHING)
-    title = models.CharField(max_length=100)
-    author = models.ForeignKey(Author, on_delete = models.DO_NOTHING)
+    title = models.CharField(max_length=100, null = False)
+    author = models.CharField(max_length = 100,null = False)
     is_traded = models.BooleanField(default=False)
     genre = models.ManyToManyField(Genre,blank=True)
     upload_date = models.DateTimeField(auto_now_add=True)
-    image = models.ImageField(upload_to="book_images/")
+    image = models.ImageField(upload_to="book_images/", null = False)
 
     def __str__(self):
         return self.title
