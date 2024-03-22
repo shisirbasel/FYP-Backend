@@ -1,14 +1,17 @@
 from rest_framework.decorators import APIView
 from rest_framework.response import Response
 from core.serializers import UserSerializer,ProfilePictureSerializer,LoginSerializer,BookSerializer, \
-    ProfileSerializer,UpdatePasswordSerializer, VerifyAccountSerializer , ShowBookSerializer, LikeBookSerializer, GetGenresSerializer
-from core.models import User, Book, Like, Genre
+    ProfileSerializer,UpdatePasswordSerializer, VerifyAccountSerializer , ShowBookSerializer, LikeBookSerializer, GetGenresSerializer, \
+    TradeRequestSerializer
+from core.models import User, Book, Like, Genre, TradeRequest
 from django.contrib.auth import authenticate,login
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.shortcuts import get_object_or_404
 from rest_framework.permissions import IsAuthenticated
 from core.emails import send_otp
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
+from django.db.models import Q
+
 
 class RegisterUserView(APIView):
     def post(self,request):
@@ -196,11 +199,64 @@ class LikeBookView(APIView):
             return Response({'message': 'Book liked successfully.'}, status=201)
         
         return Response(serializer.errors, status=400)
+
+# class TradeRequestView(APIView):
+#     permission_classes = [IsAuthenticated]
+
+#     def post(self,request):
+#         serializer = TradeRequestSerializer(data=request.data)
+#         if serializer.is_valid():
+#             user = request.user
+#             requested_book = serializer.validated_data.get("requested_book")
+#             offered_book = serializer.validated_data.get("requested_book")
+class SendTradeRequestView(APIView):
+    parser_classes = [MultiPartParser]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = TradeRequestSerializer(data=request.data, context={'request': request})
+        if serializer.is_valid():
+            serializer.save(user=request.user)
+            return Response({'message': 'Trade request created successfully.'}, status=201)
+        
+        return Response(serializer.errors, status=400)
+
+class GetTradeRequestView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, id):
+        user = request.user
+        requested_book = get_object_or_404(Book, pk=id)
+        # Check if the trade request exists for the given user and book
+        trade_request = TradeRequest.objects.filter(user=user, requested_book=requested_book).exists()
+        
+        data = {
+            'trade_request': trade_request ,
+            'user_id': user.id,
+            'requested_book': {
+                'id': requested_book.id,
+                'title': requested_book.title,
+                # Add other fields as needed
+            }
+        }
+        
+        
+        return Response(data, status=200)
+
+class DeleteTradeRequestView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, id):
+        user = request.user
+        trade_request = TradeRequest.objects.filter(user=user, requested_book = id).first()
+        trade_request.delete()
+        return Response("Trade Request Unsent", status=200)
+
     
 
 class GetAllGenresView(APIView):
 
-    # permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
         data = Genre.objects.all()
@@ -208,10 +264,42 @@ class GetAllGenresView(APIView):
         return Response(serializer.data)
 
 
-class GetOwnBooksView(APIView):
-    permission_classes = [IsAuthenticated]
 
+
+class BookSearchAPIView(APIView):
     def get(self, request):
-        books = Book.objects.filter(user=request.user)
-        serializer = ShowBookSerializer(instance=books, many=True)
-        return Response(serializer.data)
+        search_query = request.query_params.get('search', '')
+        selected_genres = request.query_params.getlist('genres', [])
+        user = request.user
+        
+        # Initial queryset that includes all books
+        queryset = Book.objects.exclude(user = user)
+        
+        # Filter by search query if provided
+        if search_query:
+            queryset = queryset.filter(
+                Q(title__icontains=search_query) |
+                Q(author__icontains=search_query) |
+                Q(genre__name__icontains=search_query)
+            )
+        
+        # Apply genre filters if selected genres are provided
+        if selected_genres:
+            genre_filters = [Q(genre__name__icontains=genre) for genre in selected_genres]
+            combined_filter = Q()
+            for q in genre_filters:
+                combined_filter |= q
+            queryset = queryset.filter(combined_filter)
+        
+        
+        serializer = ShowBookSerializer(queryset, many=True)
+        return Response(serializer.data, status=200)
+
+
+class GetUserBooksView(APIView):
+    def get(self, request):
+        user = request.user
+        books = Book.objects.filter(user = user)
+        serializer = ShowBookSerializer(books, many = True)
+        return Response(serializer.data, status = 200)
+        

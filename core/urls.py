@@ -2,7 +2,7 @@ from django.urls import path
 from core.views import (
     RegisterUserView,ShowUsersView,UpdateProfilePictureView, LoginUserView, AddBookView, 
     UpdateBookView,ShowBooksView,DeleteBookView,ShowProfileView,UpdateProfileView,UpdatePasswordView,VerifyOTPView,
-    LikeBookView, GetAllGenresView,GetOwnBooksView
+    LikeBookView, GetAllGenresView,GetUserBooksView, BookSearchAPIView, SendTradeRequestView, GetTradeRequestView, DeleteTradeRequestView
             )
 
 from rest_framework_simplejwt.views import TokenRefreshView
@@ -24,7 +24,11 @@ urlpatterns = [
     path('verify_account/',VerifyOTPView.as_view(),name="verify_otp"),
     path('like/',LikeBookView.as_view(), name='like_book'),
     path('genres/',GetAllGenresView.as_view(), name="genres"),
-    path('yourbooks/',GetOwnBooksView.as_view(), name="yourbooks"),
+    path('yourbooks/',GetUserBooksView.as_view(), name="yourbooks"),
+    path('books/search/', BookSearchAPIView.as_view(), name='book_search'),
+    path('send/traderequest/',SendTradeRequestView.as_view(), name="send_trade_request"),
+    path('get/traderequest/<int:id>/',GetTradeRequestView.as_view(), name="get_trade_request"),
+    path('delete/traderequest/<int:id>/',DeleteTradeRequestView.as_view(), name="delete_trade_request"),
 
     #jwt token 
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
