@@ -181,6 +181,9 @@ class VerifyOTPView(APIView):
 
 
 class LikeBookView(APIView):
+
+    parser_classes = [MultiPartParser]
+
     permission_classes = [IsAuthenticated]
     
     def post(self, request):
@@ -193,22 +196,33 @@ class LikeBookView(APIView):
             like_exists = Like.objects.filter(user=user, book=book).exists()
             if like_exists:
                 Like.objects.filter(user=user, book=book).delete()
-                return Response({'message': 'Book unliked successfully.'}, status=200)
+                return Response({'liked': False}, status=200)
 
             Like.objects.create(user=user, book=book)
-            return Response({'message': 'Book liked successfully.'}, status=201)
+            return Response({'liked': True}, status=201)
         
         return Response(serializer.errors, status=400)
+    
+class CheckLikedView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request, id):
+        user = request.user
+        book = get_object_or_404(Book, pk=id)
+        
+        like_exists = Like.objects.filter(user=user, book=book).exists()
+        return Response({'liked': like_exists}, status=200)
+    
+class GetLikedBookView(APIView):
+    permission_classes = [IsAuthenticated]
 
-# class TradeRequestView(APIView):
-#     permission_classes = [IsAuthenticated]
+    def get(self, request):
+        user = request.user
+        liked_books = Like.objects.filter(user=user).values_list('book', flat=True)
+        data = Book.objects.filter(pk__in = liked_books)
+        serializer = ShowBookSerializer(instance=data, many = True)
+        return Response(serializer.data)
 
-#     def post(self,request):
-#         serializer = TradeRequestSerializer(data=request.data)
-#         if serializer.is_valid():
-#             user = request.user
-#             requested_book = serializer.validated_data.get("requested_book")
-#             offered_book = serializer.validated_data.get("requested_book")
 class SendTradeRequestView(APIView):
     parser_classes = [MultiPartParser]
     permission_classes = [IsAuthenticated]
@@ -227,7 +241,6 @@ class GetTradeRequestView(APIView):
     def get(self, request, id):
         user = request.user
         requested_book = get_object_or_404(Book, pk=id)
-        # Check if the trade request exists for the given user and book
         trade_request = TradeRequest.objects.filter(user=user, requested_book=requested_book).exists()
         
         data = {
@@ -236,7 +249,6 @@ class GetTradeRequestView(APIView):
             'requested_book': {
                 'id': requested_book.id,
                 'title': requested_book.title,
-                # Add other fields as needed
             }
         }
         
@@ -252,8 +264,6 @@ class DeleteTradeRequestView(APIView):
         trade_request.delete()
         return Response("Trade Request Unsent", status=200)
 
-    
-
 class GetAllGenresView(APIView):
 
     permission_classes = [IsAuthenticated]
@@ -262,9 +272,6 @@ class GetAllGenresView(APIView):
         data = Genre.objects.all()
         serializer = GetGenresSerializer(data, many=True)
         return Response(serializer.data)
-
-
-
 
 class BookSearchAPIView(APIView):
     def get(self, request):
