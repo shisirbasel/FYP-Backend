@@ -35,6 +35,7 @@ class LikeAdmin(admin.ModelAdmin):
 
 admin.site.register(Like, LikeAdmin)
 
+
 class TradeRequestAdmin(admin.ModelAdmin):
     list_display = ('user', 'requested_book', 'offered_book', 'request_date', 'status')
     search_fields = ('user__email', 'requested_book__title', 'offered_book__title')

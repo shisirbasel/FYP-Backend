@@ -37,7 +37,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     date_joined = models.DateTimeField(auto_now_add=True)
-    profile_picture = models.ImageField(upload_to="profile_pictures/", blank=True, null=True, default=None)
+    profile_picture = models.ImageField(upload_to="profile_pictures/", blank=True, null=True, default="profile_pictures/user.png")
     username = models.CharField(max_length=100,unique=True)
     objects = UserManager()
     USERNAME_FIELD = 'email'
@@ -60,7 +60,7 @@ class Book(models.Model):
     title = models.CharField(max_length=100, null = False)
     author = models.CharField(max_length = 100,null = False)
     is_traded = models.BooleanField(default=False)
-    genre = models.ManyToManyField(Genre,blank=True)
+    genre = models.ForeignKey(Genre,blank=True, null=False, on_delete = models.DO_NOTHING)
     upload_date = models.DateTimeField(auto_now_add=True)
     image = models.ImageField(upload_to="book_images/", null = False)
 
@@ -99,12 +99,24 @@ class TradeRequest(models.Model):
         PENDING = "P", "Pending"
         ACCEPTED = "A", "Accepted"
         REJECTED = "R", "Rejected"
-
+        INVALID = "I", "Invalid"
+    id = models.AutoField(primary_key=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='trade_requests')
     requested_book = models.ForeignKey(Book, on_delete=models.CASCADE, related_name='requested_trade_requests')
     offered_book = models.ForeignKey(Book, on_delete=models.CASCADE, related_name='offered_trade_requests')
     request_date = models.DateTimeField(auto_now_add=True)
     status = models.CharField(max_length=1, choices=RequestStatus.choices, default=RequestStatus.PENDING)
+    seen = models.BooleanField(default=False)
 
-    class Meta:
-        unique_together = ('user', 'requested_book')
+
+
+
+
+
+
+class Notification(models.Model):
+    
+    id = models.AutoField(primary_key=True)
+    user = models.ForeignKey(User, on_delete = models.CASCADE, related_name = 'user')
+    message = models.TextField()
+    image = models.ImageField(upload_to="notifications/", null = False)

@@ -7,6 +7,8 @@ class GetGenresSerializer(serializers.ModelSerializer):
          model = Genre
          fields = ['id','name']
 
+
+
 class UserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
 
@@ -55,6 +57,7 @@ class BookSerializer(serializers.ModelSerializer):
 
 class ShowBookSerializer(serializers.ModelSerializer):
     user = UserSerializer()
+    genre = GetGenresSerializer()
     class Meta:
         model = Book
         fields = ['id','title', 'author', 'is_traded', 'genre', 'upload_date', 'user', 'image']
@@ -63,7 +66,7 @@ class ProfileSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = User
-        fields = ['first_name','last_name','username','email','profile_picture','genre']
+        fields = ['id', 'first_name','last_name','username','email','profile_picture','genre']
         read_only_fields = ['profile_picture']
 
 
@@ -86,7 +89,7 @@ class LikeBookSerializer(serializers.Serializer):
 
         return value
 
-class TradeRequestSerializer(serializers.ModelSerializer):
+class SendTradeRequestSerializer(serializers.ModelSerializer):
     class Meta:
         model = TradeRequest
         fields = ['user', 'requested_book', 'offered_book']
@@ -95,12 +98,38 @@ class TradeRequestSerializer(serializers.ModelSerializer):
     def validate(self, data):
         user = self.context['request'].user
         requested_book = data['requested_book']
-        
-        existing_trade_request = TradeRequest.objects.filter(user=user, requested_book=requested_book).exists()
+        offered_book = data['offered_book']
+        trade_request = TradeRequest.objects.filter(requested_book=offered_book, offered_book=requested_book).first()
+        if trade_request:
 
+            trade_request.status = TradeRequest.RequestStatus.ACCEPTED
+            trade_request.save()
+
+            requested_book = trade_request.requested_book
+            requested_book.is_traded = True
+            requested_book.save()
+
+            offered_book = trade_request.offered_book
+            offered_book.is_traded = True
+            offered_book.save()
+
+            data['reciprocal_trade_accepted'] = True
+        
+        existing_trade_request = TradeRequest.objects.exclude(status = TradeRequest.RequestStatus.REJECTED)
+        existing_trade_request = existing_trade_request.filter(user=user, requested_book=requested_book).exists()
         if existing_trade_request:
             raise serializers.ValidationError("You have already sent a trade request for this book combination.")
         
         return data
-    
+
+
+class GetTradeRequestSerializer(serializers.ModelSerializer):
+    user = UserSerializer()
+    requested_book = ShowBookSerializer()
+    offered_book = ShowBookSerializer()
+    class Meta:
+        model = TradeRequest
+        fields = ['id','user', 'requested_book', 'offered_book']
+
+
 
