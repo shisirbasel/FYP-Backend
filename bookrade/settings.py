@@ -44,6 +44,8 @@ CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
 # Application definition
 
 INSTALLED_APPS = [
+    'daphne',
+    'channels',
     'rest_framework',
     'corsheaders',
     'rest_framework_simplejwt',
@@ -57,7 +59,23 @@ INSTALLED_APPS = [
      
     #added apps
     'core',
+    'chat',
 ]
+
+#daphne
+
+ASGI_APPLICATION = "bookrade.asgi.application"
+
+#Channels Config
+
+CHANNEL_LAYERS = {
+    "default": {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            "hosts": [("localhost", 6379)],
+        },
+    },
+}
 
 REST_FRAMEWORK = {
 

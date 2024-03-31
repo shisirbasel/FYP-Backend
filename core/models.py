@@ -96,16 +96,16 @@ class Like(models.Model):
     
 class TradeRequest(models.Model):
     class RequestStatus(models.TextChoices):
-        PENDING = "P", "Pending"
-        ACCEPTED = "A", "Accepted"
-        REJECTED = "R", "Rejected"
-        INVALID = "I", "Invalid"
+        PENDING =  "Pending"
+        ACCEPTED =  "Accepted"
+        REJECTED =  "Rejected"
+        INVALID =  "Invalid"
     id = models.AutoField(primary_key=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='trade_requests')
     requested_book = models.ForeignKey(Book, on_delete=models.CASCADE, related_name='requested_trade_requests')
     offered_book = models.ForeignKey(Book, on_delete=models.CASCADE, related_name='offered_trade_requests')
     request_date = models.DateTimeField(auto_now_add=True)
-    status = models.CharField(max_length=1, choices=RequestStatus.choices, default=RequestStatus.PENDING)
+    status = models.CharField(max_length=10, choices=RequestStatus.choices, default=RequestStatus.PENDING)
     seen = models.BooleanField(default=False)
 
 

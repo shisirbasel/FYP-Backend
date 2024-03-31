@@ -129,7 +129,7 @@ class GetTradeRequestSerializer(serializers.ModelSerializer):
     offered_book = ShowBookSerializer()
     class Meta:
         model = TradeRequest
-        fields = ['id','user', 'requested_book', 'offered_book']
+        fields = ['id', 'user', 'requested_book', 'offered_book', 'status']
 
 
 
