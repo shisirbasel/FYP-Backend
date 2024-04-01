@@ -4,7 +4,8 @@ from core.views import (
     UpdateBookView,ShowBooksView,DeleteBookView,ShowProfileView,UpdateProfileView,UpdatePasswordView,VerifyOTPView,
     LikeBookView, GetAllGenresView,GetUserBooksView, BookSearchAPIView, SendTradeRequestView, CheckTradeRequestView, DeleteTradeRequestView,
     CheckLikedView, GetLikedBookView,GetReceivedTradeRequestsView, AcceptTradeRequestView, RejectTradeRequestView, GetSentTradeRequestsView,
-    CountUnseenRequestView, SeeRequestsView, TopTradeMonthsView, BookDistributionView, CountDetailsView, DeleteUserView
+    CountUnseenRequestView, SeeRequestsView, TopTradeMonthsView, BookDistributionView, CountDetailsView, DeleteUserView, ConnectedUsersView,
+    UserView
             )
 
 from rest_framework_simplejwt.views import TokenRefreshView
@@ -14,6 +15,7 @@ urlpatterns = [
     path('register/',RegisterUserView.as_view(),name="register"),
     path('users/',ShowUsersView.as_view(),name="show_users"),
     path('login/',LoginUserView.as_view(),name="login"),
+    path('user/<int:id>/', UserView.as_view(), name="user"),
     path('profile_picture/',UpdateProfilePictureView.as_view(),name="profile_picture"),
     path('update_profile/',UpdateProfileView.as_view(),name="update_profile"),
     path('update_password/',UpdatePasswordView.as_view(),name="update_password"),
@@ -43,6 +45,7 @@ urlpatterns = [
     path("books_distribution/", BookDistributionView.as_view(), name="book_distribution"),
     path("countdetails/", CountDetailsView.as_view(), name="count_details"),
     path("delete_user/<str:username>", DeleteUserView.as_view(), name="delete_user"),
+    path("get_connected_users/",ConnectedUsersView.as_view(), name="conntected_user"),
 
     #jwt token 
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),

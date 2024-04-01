@@ -33,6 +33,13 @@ class ShowUsersView(APIView):
         users = User.objects.exclude(email__endswith = "@admin.com")
         serializer = ProfileSerializer(users, many=True)
         return Response(serializer.data, status=200)
+    
+class UserView(APIView):
+    permission_classes = [IsAuthenticated]
+    def get(self,request,id):
+        user = get_object_or_404(User, id = id)
+        serializer = ProfileSerializer(user, many = False)
+        return Response(serializer.data, status = 200)
 
 class UpdateProfilePictureView(APIView):
     parser_classes = [MultiPartParser]
@@ -323,16 +330,16 @@ class GetReceivedTradeRequestsView(APIView):
 
     def get(self, request):
         user = request.user
-        requests = TradeRequest.objects.filter(requested_book__user=user, status= TradeRequest.RequestStatus.PENDING)
-        serializer = GetTradeRequestSerializer(requests, many = True)
-        return Response(serializer.data, status = 200)
+        requests = TradeRequest.objects.filter(requested_book__user=user, status=TradeRequest.RequestStatus.PENDING).order_by("-request_date")
+        serializer = GetTradeRequestSerializer(requests, many=True)
+        return Response(serializer.data, status=200)
 
 class GetSentTradeRequestsView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         user = request.user
-        requests = TradeRequest.objects.filter(user = user)
+        requests = TradeRequest.objects.filter(user = user).order_by("-request_date")
         serializer = GetTradeRequestSerializer(requests, many = True)
         return Response(serializer.data, status = 200)
     
@@ -439,3 +446,34 @@ class DeleteUserView(APIView):
         user = get_object_or_404(User,username= username)
         user.delete()
         return Response("User Deleted Successfully.", status=200)
+    
+class ConnectedUsersView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        search_query = request.query_params.get('search', None)
+        connected_user_ids = set()
+        
+        # Get the IDs of users who have sent or received trade requests with the logged-in user
+        user_ids_with_requests = TradeRequest.objects.filter(user=request.user).values_list('requested_book__user_id', flat=True).distinct()
+        requested_user_ids = TradeRequest.objects.filter(requested_book__user=request.user).values_list('user_id', flat=True).distinct()
+        
+        # Combine the IDs from both lists to get all users involved in trade requests
+        connected_user_ids.update(user_ids_with_requests)
+        connected_user_ids.update(requested_user_ids)
+
+        # Exclude the logged-in user from the connected users list
+        connected_user_ids.discard(request.user.id)
+
+        if search_query:
+            connected_users = User.objects.filter(id__in=connected_user_ids).filter(
+                Q(username__icontains=search_query) | 
+                Q(first_name__icontains=search_query) | 
+                Q(last_name__icontains=search_query)
+            )
+        else:
+            connected_users = User.objects.filter(id__in=connected_user_ids)
+
+        serializer = ProfileSerializer(connected_users, many=True)
+        return Response(serializer.data, status = 200)
+        

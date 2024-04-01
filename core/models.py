@@ -53,8 +53,6 @@ class User(AbstractBaseUser, PermissionsMixin):
 
 '''user model'''
 
-
-
 class Book(models.Model):
     user = models.ForeignKey(User,on_delete=models.DO_NOTHING)
     title = models.CharField(max_length=100, null = False)
@@ -96,10 +94,11 @@ class Like(models.Model):
     
 class TradeRequest(models.Model):
     class RequestStatus(models.TextChoices):
-        PENDING =  "Pending"
-        ACCEPTED =  "Accepted"
-        REJECTED =  "Rejected"
-        INVALID =  "Invalid"
+        PENDING = "Pending"
+        ACCEPTED = "Accepted"
+        REJECTED = "Rejected"
+        INVALID = "Invalid"
+
     id = models.AutoField(primary_key=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='trade_requests')
     requested_book = models.ForeignKey(Book, on_delete=models.CASCADE, related_name='requested_trade_requests')
@@ -107,12 +106,6 @@ class TradeRequest(models.Model):
     request_date = models.DateTimeField(auto_now_add=True)
     status = models.CharField(max_length=10, choices=RequestStatus.choices, default=RequestStatus.PENDING)
     seen = models.BooleanField(default=False)
-
-
-
-
-
-
 
 class Notification(models.Model):
     
