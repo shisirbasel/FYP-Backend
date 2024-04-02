@@ -4,7 +4,7 @@ from core.models import TradeRequest, User
 
 class Message(models.Model):
     trade_request = models.ForeignKey(TradeRequest, related_name = "messages",
-    on_delete = models.DO_NOTHING)
+    on_delete = models.SET_NULL, null = True)
     sender = models.ForeignKey(
         User,
         related_name = "sender",

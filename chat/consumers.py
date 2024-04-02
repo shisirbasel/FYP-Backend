@@ -117,7 +117,6 @@ class ChatConsumer(WebsocketConsumer):
             receiver = user),
             trade_request = traderequest
         ).order_by ('-created')
-        print(messages)
         serialized_message = MessageSerializer(
                 messages,
                 many=True,

@@ -4,6 +4,7 @@ from core.serializers import UserSerializer,ProfilePictureSerializer,LoginSerial
     ProfileSerializer,UpdatePasswordSerializer, VerifyAccountSerializer , ShowBookSerializer, LikeBookSerializer, GetGenresSerializer, \
     SendTradeRequestSerializer,GetTradeRequestSerializer
 from core.models import User, Book, Like, Genre, TradeRequest
+from chat.models import Message
 from django.contrib.auth import authenticate,login
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.shortcuts import get_object_or_404
@@ -442,6 +443,7 @@ class CountDetailsView(APIView):
     
 
 class DeleteUserView(APIView):
+
     def get(self,request,username):
         user = get_object_or_404(User,username= username)
         user.delete()
@@ -472,7 +474,10 @@ class ConnectedUsersView(APIView):
                 Q(last_name__icontains=search_query)
             )
         else:
-            connected_users = User.objects.filter(id__in=connected_user_ids)
+            current_user = request.user
+            connected_users = User.objects.filter(
+                Q(sender__receiver=current_user) | Q(receiver__sender=current_user)
+            ).distinct()
 
         serializer = ProfileSerializer(connected_users, many=True)
         return Response(serializer.data, status = 200)
