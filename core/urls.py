@@ -5,17 +5,17 @@ from core.views import (
     LikeBookView, GetAllGenresView,GetUserBooksView, BookSearchAPIView, SendTradeRequestView, CheckTradeRequestView, DeleteTradeRequestView,
     CheckLikedView, GetLikedBookView,GetReceivedTradeRequestsView, AcceptTradeRequestView, RejectTradeRequestView, GetSentTradeRequestsView,
     CountUnseenRequestView, SeeRequestsView, TopTradeMonthsView, BookDistributionView, CountDetailsView, DeleteUserView, ConnectedUsersView,
-    UserView
+    UserView,GetNotificationsView, CountUnseenNotificationsView, SeeNotificationsView, GetAcceptedTradeReqeustsView, GetRejectedTradeRequestsView, RecommendBooksView, GetOtherUserBooksView, ReportTypeView, ReportUserView, GetDistrictsView, SetTradeMeetView, GetTradeMeetView, UserWithIDView
             )
 
 from rest_framework_simplejwt.views import TokenRefreshView
-
 
 urlpatterns = [
     path('register/',RegisterUserView.as_view(),name="register"),
     path('users/',ShowUsersView.as_view(),name="show_users"),
     path('login/',LoginUserView.as_view(),name="login"),
-    path('user/<int:id>/', UserView.as_view(), name="user"),
+    path('user/<int:id>/', UserWithIDView.as_view(), name="user_id"),
+    path('user/<str:username>/', UserView.as_view(), name="user_username"),
     path('profile_picture/',UpdateProfilePictureView.as_view(),name="profile_picture"),
     path('update_profile/',UpdateProfileView.as_view(),name="update_profile"),
     path('update_password/',UpdatePasswordView.as_view(),name="update_password"),
@@ -37,6 +37,8 @@ urlpatterns = [
     path('delete/traderequest/<int:id>/',DeleteTradeRequestView.as_view(), name="delete_trade_request"),
     path('get/received_traderequests/',GetReceivedTradeRequestsView.as_view(), name="get_received_requests"),
     path('get/sent_traderequests/',GetSentTradeRequestsView.as_view(), name="get_sent_requests"),
+    path('get/rejected_traderequests/',GetRejectedTradeRequestsView.as_view(), name="get_rejected_requests"),
+    path('get/accepted_traderequests/',GetAcceptedTradeReqeustsView.as_view(), name="get_accepted_requests"),
     path('reject/traderequest/<int:id>/',RejectTradeRequestView.as_view(), name="reject_received_request"),
     path('accept/traderequest/<int:id>/',AcceptTradeRequestView.as_view(), name="accept_received_request"),
     path('count_unseen_requests/',CountUnseenRequestView.as_view(), name="request_count" ),
@@ -46,6 +48,16 @@ urlpatterns = [
     path("countdetails/", CountDetailsView.as_view(), name="count_details"),
     path("delete_user/<str:username>", DeleteUserView.as_view(), name="delete_user"),
     path("get_connected_users/",ConnectedUsersView.as_view(), name="conntected_user"),
+    path("notifications/",GetNotificationsView.as_view(), name="notifications"),
+    path("unseen_notifications/",CountUnseenNotificationsView.as_view(), name="unseen_notifications"),
+    path("see_notifications/",SeeNotificationsView.as_view(), name="see_notifications"),
+    path("recommendation/",RecommendBooksView.as_view(), name="recommendatations"),
+    path("books/<str:username>/",GetOtherUserBooksView.as_view(), name="other_user_books"),
+    path("report_types/",ReportTypeView.as_view(), name="report_type"),
+    path("report_user/<int:id>/",ReportUserView.as_view(), name="report_user"),
+    path("districts/",GetDistrictsView.as_view(), name="districts"),
+    path("set_trademeet/",SetTradeMeetView.as_view(), name="set_trademeet"),
+    path("view_trademeet/<int:id>/",GetTradeMeetView.as_view(), name="get_trademeet"),
 
     #jwt token 
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),

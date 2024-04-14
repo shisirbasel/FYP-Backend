@@ -1,18 +1,16 @@
 from rest_framework.decorators import APIView
 from rest_framework.response import Response
-from core.serializers import UserSerializer,ProfilePictureSerializer,LoginSerializer,BookSerializer, \
+from core.serializers import SetTradeMeetSerializer, UserSerializer,ProfilePictureSerializer,LoginSerializer,BookSerializer, \
     ProfileSerializer,UpdatePasswordSerializer, VerifyAccountSerializer , ShowBookSerializer, LikeBookSerializer, GetGenresSerializer, \
-    SendTradeRequestSerializer,GetTradeRequestSerializer
-from core.models import User, Book, Like, Genre, TradeRequest
-from chat.models import Message
+    SendTradeRequestSerializer,GetTradeRequestSerializer, NotificationSerializer, ViewProfileSerializer, ReportSerializer, ViewTradeMeetSerializer
+from core.models import User, Book, Like, Genre, TradeRequest, Notification, Report, TradeMeet
 from django.contrib.auth import authenticate,login
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.shortcuts import get_object_or_404
 from rest_framework.permissions import IsAuthenticated
 from core.emails import send_otp
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
-from django.db.models import Q
-from django.db.models import Count
+from django.db.models import Q, Count
 from django.utils import timezone
 import calendar
 
@@ -37,10 +35,46 @@ class ShowUsersView(APIView):
     
 class UserView(APIView):
     permission_classes = [IsAuthenticated]
+    def get(self,request,username):
+        user = get_object_or_404(User, username = username)
+        if user.is_superuser:
+            return Response("Cannot View Admin's profile", status=403)
+        
+        currentuser = request.user
+
+        context ={
+            "currentuser": currentuser,
+            "user":user
+        }
+
+        serializer = ViewProfileSerializer(user, many = False, context=context)
+        print(serializer.data)
+        return Response(serializer.data, status = 200)
+    
+class UserWithIDView(APIView):
+    permission_classes = [IsAuthenticated]
     def get(self,request,id):
         user = get_object_or_404(User, id = id)
-        serializer = ProfileSerializer(user, many = False)
+        if user.is_superuser:
+            return Response("Cannot View Admin's profile", status=403)
+        
+        currentuser = request.user
+
+        context ={
+            "currentuser": currentuser,
+            "user":user
+        }
+
+        serializer = ViewProfileSerializer(user, many = False, context=context)
+        print(serializer.data)
         return Response(serializer.data, status = 200)
+
+class CountUserBooks(APIView):
+    permission_classes = [IsAuthenticated]
+    def get(self, request):
+        user = request.user
+        books = Book.objects.filter(user = user).count()
+        return Response({'books': books}, status=200)
 
 class UpdateProfilePictureView(APIView):
     parser_classes = [MultiPartParser]
@@ -68,6 +102,12 @@ class LoginUserView(APIView):
             if not user.is_verified:
                 send_otp(user.email)
                 return Response({"message": "Account Not Verified, Please Verify Your Account", "is_verified": False}, status=403)
+            
+            #if user is suspendended
+            #check suspended time
+            #if suspended time is over the time
+            #is suspended is false
+            #else throw 403 and suspended message
 
             login(request, user)
             refresh = RefreshToken.for_user(user)
@@ -86,7 +126,6 @@ class LoginUserView(APIView):
             }, status=200)
         
         return Response(serializer.errors, status=400)
-    
         
 class AddBookView(APIView):
 
@@ -138,8 +177,10 @@ class UpdateProfileView(APIView):
         user = self.request.user
         serializer = ProfileSerializer(instance=user, data = request.data, partial=True)
         if serializer.is_valid():
+            print(request.data)
             serializer.save()
             return Response(serializer.data,status=200)
+        print(request.data)
         return Response(serializer.errors, status=400)
     
 class ShowProfilePictureView(APIView):
@@ -242,6 +283,7 @@ class SendTradeRequestView(APIView):
                 return Response({'message': 'Trade request accepted successfully.'}, status=200)
             else:
                 serializer.save(user=request.user)
+                
                 return Response({'message': 'Trade request created successfully.'}, status=200)
         return Response(serializer.errors, status=400)
 
@@ -322,7 +364,16 @@ class GetUserBooksView(APIView):
 
     def get(self, request):
         user = request.user
-        books = Book.objects.filter(user = user)
+        books = Book.objects.filter(user = user, is_traded = False)
+        serializer = ShowBookSerializer(books, many = True)
+        return Response(serializer.data, status = 200)
+    
+class GetOtherUserBooksView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, username):
+        user = get_object_or_404(User, username = username)
+        books = Book.objects.filter(user = user, is_traded = False)
         serializer = ShowBookSerializer(books, many = True)
         return Response(serializer.data, status = 200)
     
@@ -343,6 +394,21 @@ class GetSentTradeRequestsView(APIView):
         requests = TradeRequest.objects.filter(user = user).order_by("-request_date")
         serializer = GetTradeRequestSerializer(requests, many = True)
         return Response(serializer.data, status = 200)
+
+class GetAcceptedTradeReqeustsView(APIView):
+    
+    def get(self, request):
+        user = request.user
+        requests = TradeRequest.objects.filter(Q(requested_book__user = user) | Q(user = user), status = TradeRequest.RequestStatus.ACCEPTED).order_by("-request_date")
+        serializer = GetTradeRequestSerializer(requests, many = True)
+        return Response(serializer.data, status = 200)
+
+class GetRejectedTradeRequestsView(APIView):
+    def get(self, request):
+        user = request.user
+        requests = TradeRequest.objects.filter(Q(requested_book__user = user) | Q(user = user), status = TradeRequest.RequestStatus.REJECTED).order_by("-request_date")
+        serializer = GetTradeRequestSerializer(requests, many = True)
+        return Response(serializer.data, status = 200)
     
 
 class RejectTradeRequestView(APIView):
@@ -352,6 +418,9 @@ class RejectTradeRequestView(APIView):
         trade_request = get_object_or_404(TradeRequest,id=id)
         trade_request.status = TradeRequest.RequestStatus.REJECTED
         trade_request.save()
+
+        Notification.objects.create(user = trade_request.user,
+                                     message = f"Your traderequest for {trade_request.requested_book} was rejected.")
         return Response("Trade Request Rejected", status=200)
 
 class AcceptTradeRequestView(APIView):
@@ -370,6 +439,9 @@ class AcceptTradeRequestView(APIView):
         trade_request.save()
         other_requests = TradeRequest.objects.exclude(id = id)
         other_requests = other_requests.filter(Q(requested_book = requested_book) | Q(offered_book = offered_book) | Q(offered_book = requested_book) | Q(requested_book = offered_book))
+
+        Notification.objects.create(user = trade_request.user, message = f"Your Traderequest for {requested_book.title} was accepted.")
+        
         
         for request in other_requests:
             request.status = TradeRequest.RequestStatus.INVALID
@@ -409,11 +481,10 @@ class TopTradeMonthsView(APIView):
         # Calculate the trade requests count for each month of the current year
         trade_requests_by_month = TradeRequest.objects.filter(request_date__year=current_year).values('request_date__month').annotate(request_count=Count('id'))
 
-        # Organize the data into a dictionary with month names as keys and trade request counts as values
         top_months_data = {}
         for entry in trade_requests_by_month:
             month_number = entry['request_date__month']
-            month_name = calendar.month_name[month_number]  # Get month name from month number
+            month_name = calendar.month_name[month_number] 
             top_months_data[month_name] = entry['request_count']
 
         return Response(top_months_data, status=200)
@@ -434,7 +505,7 @@ class BookDistributionView(APIView):
 class CountDetailsView(APIView):
     def get(self, request):
         books = Book.objects.all().count()
-        users = User.objects.all().count() - 1
+        users = User.objects.exclude(email__endswith = '@admin.com').count()
         traderequests = TradeRequest.objects.all().count()
 
         return Response({
@@ -443,8 +514,7 @@ class CountDetailsView(APIView):
     
 
 class DeleteUserView(APIView):
-
-    def get(self,request,username):
+    def delete(self,request,username):
         user = get_object_or_404(User,username= username)
         user.delete()
         return Response("User Deleted Successfully.", status=200)
@@ -456,15 +526,12 @@ class ConnectedUsersView(APIView):
         search_query = request.query_params.get('search', None)
         connected_user_ids = set()
         
-        # Get the IDs of users who have sent or received trade requests with the logged-in user
         user_ids_with_requests = TradeRequest.objects.filter(user=request.user).values_list('requested_book__user_id', flat=True).distinct()
         requested_user_ids = TradeRequest.objects.filter(requested_book__user=request.user).values_list('user_id', flat=True).distinct()
         
-        # Combine the IDs from both lists to get all users involved in trade requests
         connected_user_ids.update(user_ids_with_requests)
         connected_user_ids.update(requested_user_ids)
 
-        # Exclude the logged-in user from the connected users list
         connected_user_ids.discard(request.user.id)
 
         if search_query:
@@ -481,4 +548,100 @@ class ConnectedUsersView(APIView):
 
         serializer = ProfileSerializer(connected_users, many=True)
         return Response(serializer.data, status = 200)
+    
+class GetNotificationsView(APIView):
+    permission_classes =[IsAuthenticated]
+    def get(self, request):
+        notifications = Notification.objects.filter(user = request.user).order_by('-date')
+        serializer = NotificationSerializer(notifications, many = True)
+        return Response(serializer.data, status = 200)
+
+class CountUnseenNotificationsView(APIView):
+    permission_classes = [IsAuthenticated]
+    def get(self, request):
+        count = Notification.objects.filter(user = request.user, seen = False).count()
+        return Response({'count': count}, status= 200)
+
+class SeeNotificationsView(APIView):
+    permission_classes = [IsAuthenticated]
+    def patch(self, request):
+        notifications = Notification.objects.filter(user = request.user, seen = False)
+        for notification in notifications:
+            notification.seen = True
+            notification.save()
+        return Response("Notifications Seen.", status=200)
+
+
+class RecommendBooksView(APIView):
+    def get(self, request):
+        user = request.user
+        chosen_genres = user.genre.all()
+        top_traded_genres = TradeRequest.objects.filter(user=user).values('requested_book__genre').annotate(total_trades=Count('id')).order_by('-total_trades')[:4]
         
+        recommended_genres = set(chosen_genres) | set(Genre.objects.filter(id__in=top_traded_genres.values_list('requested_book__genre', flat=True)))
+
+        recommended_books = Book.objects.filter(genre__in=recommended_genres).exclude(user=user).exclude(is_traded = True).distinct()[:10]  # Limit =
+        serializer = ShowBookSerializer(recommended_books, many=True)
+        return Response(serializer.data, status=200)
+
+class ReportTypeView(APIView):
+    def get(self, request):
+        report_types = dict(Report.ReportType.choices)
+        return Response({'report_types': report_types}, status=200)
+
+class ReportUserView(APIView):
+    def post(self, request, id):
+        reported_user_id = id
+        reported_by_user = request.user
+        report_type = request.data.get('type')
+        description = request.data.get('description')
+
+
+        report_data = {
+            'reported_by': reported_by_user.id,
+            'reported_user': reported_user_id,
+            'type': report_type,
+            'description': description
+        }
+        serializer = ReportSerializer(data=report_data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=201)
+        return Response(serializer.errors, status=400)
+
+class GetDistrictsView(APIView):
+   def get(self, request):
+        districts = [choice[0] for choice in TradeMeet.DISTRICT_CHOICES]
+        return Response({'districts': districts})
+
+class SetTradeMeetView(APIView):
+    parser_classes=[MultiPartParser]
+    permission_classes=[IsAuthenticated]
+
+    def post(self, request):
+        sender = request.user
+        traderequest = TradeRequest.objects.get(id = request.data.get('traderequest'))
+
+        receiver = traderequest.requested_book.user
+        if receiver == sender:
+            receiver = traderequest.offered_book.user
+        
+        data = request.data.copy()
+        data['sender'] = sender.id
+        data['receiver'] = receiver.id
+        
+        serializer = SetTradeMeetSerializer(data=data)
+        
+        if serializer.is_valid():
+            serializer.save()
+            Notification.objects.create(user = receiver, message =f"{sender.username} has set a new Trademeet.")
+            return Response({'success': 'Trade meet set successfully'}, status=201)
+        
+        return Response(serializer.errors, status=400)
+
+
+class GetTradeMeetView(APIView):
+    def get(self, request, id):
+        trademeet = get_object_or_404(TradeMeet, traderequest__id = id)
+        serializer = ViewTradeMeetSerializer(trademeet, many = False)
+        return Response(serializer.data, status=200)

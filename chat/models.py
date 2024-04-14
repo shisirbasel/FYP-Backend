@@ -8,12 +8,12 @@ class Message(models.Model):
     sender = models.ForeignKey(
         User,
         related_name = "sender",
-        on_delete = models.DO_NOTHING
+        on_delete = models.CASCADE
     )
     receiver = models.ForeignKey(
         User,
         related_name = "receiver",
-        on_delete = models.DO_NOTHING
+        on_delete = models.CASCADE
     )
     text = models.TextField()
     created = models.DateField(auto_now_add = True)

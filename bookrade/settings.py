@@ -38,8 +38,6 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000", "http://127.0.0.1:3000"
 ]
 
-CELERY_BROKER_URL = 'redis://localhost:6379/0'
-CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
 
 # Application definition
 
@@ -89,8 +87,8 @@ REST_FRAMEWORK = {
 }
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60), 
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=30) 
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=10), 
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=90) 
 }
 
 MIDDLEWARE = [

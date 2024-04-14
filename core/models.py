@@ -1,5 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser,BaseUserManager,PermissionsMixin
+from django.core.validators import MinValueValidator, MaxValueValidator
+
 
 class Genre(models.Model):
     name = models.CharField(max_length=100,unique=True, verbose_name="Genre")
@@ -44,6 +46,8 @@ class User(AbstractBaseUser, PermissionsMixin):
     genre = models.ManyToManyField(Genre,blank=True)
     otp = models.CharField(max_length=4, null=True)
     is_verified = models.BooleanField(default=False)
+    is_suspended = models.BooleanField(default = False)
+    suspended_date = models.DateField(null = True)
 
     def full_name(self):
         return f"{self.first_name} {self.last_name}"
@@ -54,7 +58,7 @@ class User(AbstractBaseUser, PermissionsMixin):
 '''user model'''
 
 class Book(models.Model):
-    user = models.ForeignKey(User,on_delete=models.DO_NOTHING)
+    user = models.ForeignKey(User,on_delete=models.CASCADE)
     title = models.CharField(max_length=100, null = False)
     author = models.CharField(max_length = 100,null = False)
     is_traded = models.BooleanField(default=False)
@@ -71,10 +75,11 @@ class Report(models.Model):
         INAPPROPRIATE_CONTENT = 'IC', 'Inappropriate Content'
         DIDNOT_APPEAR = "DA", "Didnot Appear"
         FAKE_BOOK = "FB", "Fake Book"
+        WRONG_MEET = "WM", "Wrong Trade Meet Place"
 
-    reported_by = models.ForeignKey(User, on_delete=models.DO_NOTHING, related_name='reports_submitted')
+    reported_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reports_submitted')
     reported_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reports_received')
-    type = models.CharField(max_length=2, choices=ReportType.choices)
+    type = models.CharField(max_length=50, choices=ReportType.choices)
     report_date = models.DateTimeField(auto_now_add=True)
     description = models.TextField()
 
@@ -98,6 +103,7 @@ class TradeRequest(models.Model):
         ACCEPTED = "Accepted"
         REJECTED = "Rejected"
         INVALID = "Invalid"
+        DELETED = "Deleted"
 
     id = models.AutoField(primary_key=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='trade_requests')
@@ -108,8 +114,61 @@ class TradeRequest(models.Model):
     seen = models.BooleanField(default=False)
 
 class Notification(models.Model):
-    
     id = models.AutoField(primary_key=True)
     user = models.ForeignKey(User, on_delete = models.CASCADE, related_name = 'user')
     message = models.TextField()
-    image = models.ImageField(upload_to="notifications/", null = False)
+    date = models.DateTimeField(auto_now_add=True)
+    seen = models.BooleanField(default=False)
+
+    def __str__(self):
+        return self.user.username + '-'+ self.message
+
+class Rating(models.Model):
+    id = models.AutoField(primary_key=True)
+    rater = models.ForeignKey(User, on_delete=models.CASCADE, related_name="rater")
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name = 'rating_user')
+    rating = models.IntegerField( validators=[
+            MinValueValidator(0),  
+            MaxValueValidator(5)  
+        ])
+
+class TradeMeet(models.Model):
+    id = models.BigAutoField(primary_key=True, auto_created=True)
+    date = models.DateField()
+    time = models.TimeField()
+    place = models.CharField(max_length=200)
+    
+    DISTRICT_CHOICES = [
+        ('Achham', 'Achham'), ('Arghakhanchi', 'Arghakhanchi'), ('Baglung', 'Baglung'),
+        ('Baitadi', 'Baitadi'), ('Bajhang', 'Bajhang'), ('Bajura', 'Bajura'),
+        ('Banke', 'Banke'), ('Bara', 'Bara'), ('Bardiya', 'Bardiya'),
+        ('Bhaktapur', 'Bhaktapur'), ('Bhojpur', 'Bhojpur'), ('Chitwan', 'Chitwan'),
+        ('Dadeldhura', 'Dadeldhura'), ('Dailekh', 'Dailekh'), ('Dang', 'Dang'),
+        ('Darchula', 'Darchula'), ('Dhading', 'Dhading'), ('Dhankuta', 'Dhankuta'),
+        ('Dhanusa', 'Dhanusa'), ('Dholkha', 'Dholkha'), ('Dolpa', 'Dolpa'),
+        ('Doti', 'Doti'), ('Gorkha', 'Gorkha'), ('Gulmi', 'Gulmi'),
+        ('Humla', 'Humla'), ('Illam', 'Illam'), ('Jajarkot', 'Jajarkot'),
+        ('Jhapa', 'Jhapa'), ('Jumla', 'Jumla'), ('Kailali', 'Kailali'),
+        ('Kalikot', 'Kalikot'), ('Kanchanpur', 'Kanchanpur'), ('Kapilvastu', 'Kapilvastu'),
+        ('Kaski', 'Kaski'), ('Kathmandu', 'Kathmandu'), ('Kavrepalanchok', 'Kavrepalanchok'),
+        ('Khotang', 'Khotang'), ('Lalitpur', 'Lalitpur'), ('Lamjung', 'Lamjung'),
+        ('Mahottari', 'Mahottari'), ('Makwanpur', 'Makwanpur'), ('Manang', 'Manang'),
+        ('Morang', 'Morang'), ('Mugu', 'Mugu'), ('Mustang', 'Mustang'),
+        ('Myagdi', 'Myagdi'), ('Nawalparasi', 'Nawalparasi'), ('Nuwakot', 'Nuwakot'),
+        ('Okhaldhunga', 'Okhaldhunga'), ('Palpa', 'Palpa'), ('Panchthar', 'Panchthar'),
+        ('Parbat', 'Parbat'), ('Parsa', 'Parsa'), ('Pyuthan', 'Pyuthan'),
+        ('Ramechhap', 'Ramechhap'), ('Rasuwa', 'Rasuwa'), ('Rautahat', 'Rautahat'),
+        ('Rolpa', 'Rolpa'), ('Rukum', 'Rukum'), ('Rupandehi', 'Rupandehi'),
+        ('Salyan', 'Salyan'), ('Sankhuwasabha', 'Sankhuwasabha'), ('Saptari', 'Saptari'),
+        ('Sarlahi', 'Sarlahi'), ('Sindhuli', 'Sindhuli'), ('Sindhupalchok', 'Sindhupalchok'),
+        ('Siraha', 'Siraha'), ('Solukhumbu', 'Solukhumbu'), ('Sunsari', 'Sunsari'),
+        ('Surkhet', 'Surkhet'), ('Syangja', 'Syangja'), ('Tanahu', 'Tanahu'),
+        ('Taplejung', 'Taplejung'), ('Terhathum', 'Terhathum'), ('Udayapur', 'Udayapur')
+    ]
+    
+    district = models.CharField(max_length=50, choices=DISTRICT_CHOICES)
+    traderequest = models.ForeignKey(TradeRequest, on_delete=models.CASCADE)
+    receiver = models.ForeignKey( User, on_delete=models.CASCADE, related_name='trademeet_receiver')
+    sender = models.ForeignKey(User, on_delete= models.CASCADE, related_name='trademeet_sender')
+
+    
