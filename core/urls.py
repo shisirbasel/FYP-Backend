@@ -5,10 +5,11 @@ from core.views import (
     LikeBookView, GetAllGenresView,GetUserBooksView, BookSearchAPIView, SendTradeRequestView, CheckTradeRequestView, DeleteTradeRequestView,
     CheckLikedView, GetLikedBookView,GetReceivedTradeRequestsView, AcceptTradeRequestView, RejectTradeRequestView, GetSentTradeRequestsView,
     CountUnseenRequestView, SeeRequestsView, TopTradeMonthsView, BookDistributionView, CountDetailsView, DeleteUserView, ConnectedUsersView,
-    UserView,GetNotificationsView, CountUnseenNotificationsView, SeeNotificationsView, GetAcceptedTradeReqeustsView, GetRejectedTradeRequestsView, RecommendBooksView, GetOtherUserBooksView, ReportTypeView, ReportUserView, GetDistrictsView, SetTradeMeetView, GetTradeMeetView, UserWithIDView
+    UserView,GetNotificationsView, CountUnseenNotificationsView, SeeNotificationsView, GetAcceptedTradeReqeustsView, GetRejectedTradeRequestsView, RecommendBooksView, GetOtherUserBooksView, ReportTypeView, ReportUserView, GetDistrictsView, SetTradeMeetView, GetTradeMeetView, UserWithIDView,
+    RateUserView, UpdateUserRatingView, CheckUserRatingView, GetAvgUserRatingView, SuspendUserView, ViewAllReports, CheckUserStatusView, GetAllTradeMeetsView, GetTodayTradeMeetView,GetAllTradeRequestsView, GetTomorrowTradeMeetView, GetWeekTradeMeetView,CheckAcceptedReqeustView, SendPasswordResetEmailView,ResetPasswordView
             )
 
-from rest_framework_simplejwt.views import TokenRefreshView
+from rest_framework_simplejwt.views import TokenRefreshView, TokenBlacklistView
 
 urlpatterns = [
     path('register/',RegisterUserView.as_view(),name="register"),
@@ -58,7 +59,25 @@ urlpatterns = [
     path("districts/",GetDistrictsView.as_view(), name="districts"),
     path("set_trademeet/",SetTradeMeetView.as_view(), name="set_trademeet"),
     path("view_trademeet/<int:id>/",GetTradeMeetView.as_view(), name="get_trademeet"),
-
+    path("rate_user/<int:id>/",RateUserView.as_view(), name="rate_user"),
+    path("update_user_rating/<str:username>/",UpdateUserRatingView.as_view(), name="update_rate_user"),
+    path("get_user_rating/<str:username>/",CheckUserRatingView.as_view(), name="get_rate_user"),
+    path("avg_user_rating/<str:username>/",GetAvgUserRatingView.as_view(), name="get_rate_user"),
+    path("reports/",ViewAllReports.as_view(), name="reports"),
+    path("suspend/<int:id>/",SuspendUserView.as_view(), name="suspend_user"),
+    path("status/<int:id>/",CheckUserStatusView.as_view(), name="user_status"),
+    path("all_traderequests/",GetAllTradeRequestsView.as_view(), name="all_traderequests"),
+    path("all_trademeets/",GetAllTradeMeetsView.as_view(), name="all_trademeets"),
+    path("today_trademeets/",GetTodayTradeMeetView.as_view(), name="today_trademeet"),
+    path("tomorrow_trademeets/",GetTomorrowTradeMeetView.as_view(), name="tomorrow_trademeet"),
+    path("week_trademeets/",GetWeekTradeMeetView.as_view(), name="week_trademeet"),
+    path("check_request/<str:username>/",CheckAcceptedReqeustView.as_view(), name="check_request"),
+    path("send_reset_password_email/",SendPasswordResetEmailView.as_view(), name="reset-password-email"),
+    path("reset_password/<str:uid>/<str:token>/",ResetPasswordView.as_view(), name="reset-password"),
+    
     #jwt token 
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('token/blacklist/', TokenBlacklistView.as_view(), name='token_blacklist'),
+
+
 ]

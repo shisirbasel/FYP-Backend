@@ -2,21 +2,25 @@ from rest_framework.decorators import APIView
 from rest_framework.response import Response
 from core.serializers import SetTradeMeetSerializer, UserSerializer,ProfilePictureSerializer,LoginSerializer,BookSerializer, \
     ProfileSerializer,UpdatePasswordSerializer, VerifyAccountSerializer , ShowBookSerializer, LikeBookSerializer, GetGenresSerializer, \
-    SendTradeRequestSerializer,GetTradeRequestSerializer, NotificationSerializer, ViewProfileSerializer, ReportSerializer, ViewTradeMeetSerializer
-from core.models import User, Book, Like, Genre, TradeRequest, Notification, Report, TradeMeet
+    SendTradeRequestSerializer,GetTradeRequestSerializer, NotificationSerializer, ViewProfileSerializer, ReportSerializer, \
+    ViewTradeMeetSerializer, RateUserSerializer, CheckUserRatingSerializer, ViewReportSerializer, SendPasswordResetEmailSerializer, ResetPasswordSerializer
+from core.models import User, Book, Like, Genre, TradeRequest, Notification, Report, TradeMeet, Rating
 from django.contrib.auth import authenticate,login
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.shortcuts import get_object_or_404
 from rest_framework.permissions import IsAuthenticated
 from core.emails import send_otp
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
-from django.db.models import Q, Count
+from django.db.models import Q, Count, Avg, Max
 from django.utils import timezone
 import calendar
+from datetime import datetime, timedelta
+from rest_framework.pagination import PageNumberPagination
 
 class RegisterUserView(APIView):
     def post(self,request):
         serializer = UserSerializer(data = request.data)
+        print(request.data)
         if serializer.is_valid():
             serializer.save()
             send_otp(serializer.data['email'])
@@ -103,26 +107,25 @@ class LoginUserView(APIView):
                 send_otp(user.email)
                 return Response({"message": "Account Not Verified, Please Verify Your Account", "is_verified": False}, status=403)
             
-            #if user is suspendended
-            #check suspended time
-            #if suspended time is over the time
-            #is suspended is false
-            #else throw 403 and suspended message
+            if user.is_banned:
+                return Response({'message': f"Your Account was Banned for multiple rules violation.", "is_verified": True, "is_banned" : user.is_banned }, status=403)
+            
+            if user.is_suspended:
+                if datetime.now().date() >= user.suspended_date:
+                    user.is_suspended = False
+                    user.save()
+                else:
+                    return Response({'message': f"You are Suspended Until {user.suspended_date}", "is_verified": True, "is_suspended" : user.is_suspended }, status=403)
+            
 
             login(request, user)
             refresh = RefreshToken.for_user(user)
             
             return Response({
                 'message': "Logged In Successfully",
-                'refresh': {
-                    'token': str(refresh),
-                },
-                'access': {
-                    'token': str(refresh.access_token),
-                },
-                'user': {
-                    'is_admin': user.is_superuser
-                }
+                'refresh': str(refresh),
+                'access': str(refresh.access_token),
+                'is_admin': user.is_superuser,
             }, status=200)
         
         return Response(serializer.errors, status=400)
@@ -144,9 +147,11 @@ class AddBookView(APIView):
         return Response(serializer.errors, status = 400)
 
 class UpdateBookView(APIView):
+    parser_classes =[MultiPartParser]
     def patch(self,request,id):
         book = get_object_or_404(Book, id = id)
         serializer = BookSerializer(instance=book, data = request.data, partial=True)
+        print(request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data,status=200)
@@ -194,6 +199,7 @@ class ShowProfilePictureView(APIView):
 
 
 class UpdatePasswordView(APIView):
+    parser_classes = [MultiPartParser]
     def patch(self, request):
         user = self.request.user
         serializer = UpdatePasswordSerializer(data=request.data)
@@ -201,13 +207,15 @@ class UpdatePasswordView(APIView):
             if user.check_password(serializer.validated_data.get('old_password')):
                 user.set_password(serializer.validated_data.get('new_password'))
                 user.save()
-                return Response({"message": "Password Changed Successfully"}, status=200)
-            return Response({"error": "Invalid Password"}, status=400)
+                return Response("Password Changed Successfully", status=200)
+            return Response("Invalid Password, Please Try again", status=400)
         return Response(serializer.errors, status=400)
 
 class VerifyOTPView(APIView):
     def post(self,request):
         serializer = VerifyAccountSerializer(data=request.data)
+        print(request.data)
+
         if serializer.is_valid():
             email = serializer.data['email']
             otp = serializer.data['otp']
@@ -590,6 +598,8 @@ class ReportTypeView(APIView):
         return Response({'report_types': report_types}, status=200)
 
 class ReportUserView(APIView):
+    parser_classes = [MultiPartParser]
+    permission_classes = [IsAuthenticated]
     def post(self, request, id):
         reported_user_id = id
         reported_by_user = request.user
@@ -639,9 +649,201 @@ class SetTradeMeetView(APIView):
         
         return Response(serializer.errors, status=400)
 
-
 class GetTradeMeetView(APIView):
     def get(self, request, id):
-        trademeet = get_object_or_404(TradeMeet, traderequest__id = id)
+        trademeet = TradeMeet.objects.filter(traderequest__id = id).order_by('-date').first()
         serializer = ViewTradeMeetSerializer(trademeet, many = False)
         return Response(serializer.data, status=200)
+
+class RateUserView(APIView):
+    parser_classes = [MultiPartParser]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, id):
+        data = {
+            'rater': request.user.id,
+            'user': User.objects.get(id=id).id,
+            'rating': request.data.get('rating')
+        }
+        
+        serializer = RateUserSerializer(data=data)
+        
+        if serializer.is_valid():
+            serializer.save()
+            return Response("User Rated Successfully.", status=201)
+        return Response(serializer.errors, status=400)
+
+class UpdateUserRatingView(APIView):
+    parser_classes = [MultiPartParser]
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request, username):
+        rater = request.user
+        user = get_object_or_404(User, username=username)
+        
+        try:
+            rating = Rating.objects.get(rater=rater, user=user)
+        except Rating.DoesNotExist:
+            rating = Rating(rater=rater, user=user)
+
+        serializer = RateUserSerializer(instance=rating, data=request.data, partial=True)
+        
+        if serializer.is_valid():
+            serializer.save()
+            return Response("User Rated Successfully.", status=200)
+        return Response(serializer.errors, status=400)
+
+class CheckUserRatingView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request, username):
+        rater = request.user
+        user = User.objects.get(username=username)
+        
+        try:
+            rating = Rating.objects.get(rater=rater, user=user)
+            serializer = CheckUserRatingSerializer(rating)
+            return Response(serializer.data, status=200)
+        except Rating.DoesNotExist:
+            return Response("Rating does not exist.", status=404)
+
+class GetAvgUserRatingView(APIView):
+    permission_classes = [IsAuthenticated]
+    def get(self, request, username):
+        user_ratings = Rating.objects.filter(user__username=username)
+        avg_rating = user_ratings.aggregate(Avg('rating'))['rating__avg']
+        return Response({"rating": avg_rating}, status=200)
+
+class SuspendUserView(APIView):
+    permission_classes = [IsAuthenticated]
+    def patch(self, request, id):
+        user = User.objects.get(id=id)
+        user.suspend_count += 1
+
+        if user.suspend_count >=3:
+            user.is_banned = True
+        
+        user.suspended_date = datetime.now() + timedelta(days=7)
+        user.is_suspended = True
+        user.save()
+        return Response("User Suspended Successfully", status=200)
+
+class ViewAllReports(APIView):
+    permission_classes = [IsAuthenticated]
+    def get(self, request):
+        reports = Report.objects.all().order_by('-report_date')
+        serializer = ViewReportSerializer(reports, many = True)
+        return Response(serializer.data,status=200)
+
+class CheckUserStatusView(APIView):
+    permission_classes = [IsAuthenticated]
+    def get(self, request, id):
+        status = User.objects.get(id = id).is_suspended
+        return Response({'status': status}, status = 200)
+
+
+class GetAllTradeRequestsView(APIView):
+    permission_classes = [IsAuthenticated]
+    pagination_class = PageNumberPagination 
+    
+    def get(self, request):
+        paginator = self.pagination_class()
+        requests = TradeRequest.objects.all().order_by('-request_date')
+ 
+        page = paginator.paginate_queryset(requests, request)
+
+        if page is not None:
+            serializer = GetTradeRequestSerializer(page, many=True)
+            return paginator.get_paginated_response(serializer.data)
+        
+        serializer = GetTradeRequestSerializer(requests, many=True)
+        return Response(serializer.data, status=200)
+
+class GetAllTradeMeetsView(APIView):
+    def get(self, request):
+        # Annotate the TradeMeet queryset to get the maximum created_date for each traderequest
+        latest_dates = TradeMeet.objects.values('traderequest_id').annotate(max_date=Max('created_date'))
+        
+        # Get the distinct TradeRequest objects with the most recent created_date
+        distinct_traderequests = TradeMeet.objects.filter(
+            id__in=[item['traderequest_id'] for item in latest_dates]
+        ).order_by('traderequest_id', '-created_date').distinct('traderequest_id')
+        
+
+        serializer = ViewTradeMeetSerializer(distinct_traderequests, many=True)
+        
+        return Response(serializer.data, status=200)
+    
+class GetTodayTradeMeetView(APIView):
+    def get(self, request):
+        today_date = datetime.now().date()
+        
+        # Annotate the TradeMeet queryset to get the maximum date for each traderequest
+        latest_dates = TradeMeet.objects.filter(date=today_date).values('traderequest_id').annotate(max_date=Max('date'))
+        
+        # Get the distinct TradeMeet objects with the most recent date
+        distinct_trademeets = TradeMeet.objects.filter(
+            traderequest_id__in=[item['traderequest_id'] for item in latest_dates],
+            date__in=[item['max_date'] for item in latest_dates]
+        ).order_by('-date')
+        
+        serializer = ViewTradeMeetSerializer(distinct_trademeets, many=True)
+        return Response(serializer.data, status=200)
+    
+class CheckAcceptedReqeustView(APIView):
+    permission_classes = [IsAuthenticated]
+    def get(self, request, username):
+        user =  User.objects.get(username = username)
+        if TradeRequest.objects.filter(Q(requested_book__user = request.user, offered_book__user = user) | Q(requested_book__user = user, offered_book__user = request.user), status = TradeRequest.RequestStatus.ACCEPTED).exists():
+            return Response({'exists':True}, status = 200)
+        return Response({'exists': False}, status=200)
+
+    
+class GetTomorrowTradeMeetView(APIView):
+    def get(self, request):
+        tomorrow_date = datetime.now().date() + timedelta(days=1)
+        
+        # Annotate the TradeMeet queryset to get the maximum date for each traderequest
+        latest_dates = TradeMeet.objects.filter(date=tomorrow_date).values('traderequest_id').annotate(max_date=Max('date'))
+        
+        # Get the distinct TradeMeet objects with the most recent date
+        distinct_trademeets = TradeMeet.objects.filter(
+            traderequest_id__in=[item['traderequest_id'] for item in latest_dates],
+            date__in=[item['max_date'] for item in latest_dates]
+        ).order_by('-date')
+        
+        serializer = ViewTradeMeetSerializer(distinct_trademeets, many=True)
+        return Response(serializer.data, status=200)
+
+class GetWeekTradeMeetView(APIView):
+    def get(self, request):
+        tomorrow_date = datetime.now().date() + timedelta(days=1)
+        end_of_week = datetime.now().date() + timedelta(days=7)
+        
+        # Annotate the TradeMeet queryset to get the maximum date for each traderequest
+        latest_dates = TradeMeet.objects.filter(date__gt=tomorrow_date, date__lte=end_of_week).values('traderequest_id').annotate(max_date=Max('date'))
+        
+        # Get the distinct TradeMeet objects with the most recent date
+        distinct_trademeets = TradeMeet.objects.filter(
+            traderequest_id__in=[item['traderequest_id'] for item in latest_dates],
+            date__in=[item['max_date'] for item in latest_dates]
+        ).order_by('-date')
+        
+        serializer = ViewTradeMeetSerializer(distinct_trademeets, many=True)
+        return Response(serializer.data, status=200)
+    
+class SendPasswordResetEmailView(APIView):
+    def post(self, request):
+        serializer = SendPasswordResetEmailSerializer(data = request.data)
+        if serializer.is_valid():
+            return Response("Password Reset Link Sent.", status= 201)
+        print(serializer.errors)
+        return Response(serializer.errors, status= 400)
+
+
+class ResetPasswordView(APIView):
+    def post(self, request, uid, token):
+        serializer = ResetPasswordSerializer(data = request.data, context ={"uid": uid, "token":token})
+        if serializer.is_valid():
+            return Response("Password Reset Successfully.", status=200)
+        return Response(serializer.errors, status=400)

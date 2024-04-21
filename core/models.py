@@ -34,8 +34,8 @@ class UserManager(BaseUserManager):
 
 class User(AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(unique=True)
-    first_name = models.CharField(max_length=100, blank=True)
-    last_name = models.CharField(max_length=100, blank=True)
+    first_name = models.CharField(max_length=100, blank=False, null=False)
+    last_name = models.CharField(max_length=100, blank=False, null=False)
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     date_joined = models.DateTimeField(auto_now_add=True)
@@ -48,6 +48,8 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_verified = models.BooleanField(default=False)
     is_suspended = models.BooleanField(default = False)
     suspended_date = models.DateField(null = True)
+    suspend_count = models.IntegerField(default = 0)
+    is_banned = models.BooleanField(default = False)
 
     def full_name(self):
         return f"{self.first_name} {self.last_name}"
@@ -71,11 +73,11 @@ class Book(models.Model):
     
 class Report(models.Model):
     class ReportType(models.TextChoices):
-        SPAM = 'SP', 'Spam'
-        INAPPROPRIATE_CONTENT = 'IC', 'Inappropriate Content'
-        DIDNOT_APPEAR = "DA", "Didnot Appear"
-        FAKE_BOOK = "FB", "Fake Book"
-        WRONG_MEET = "WM", "Wrong Trade Meet Place"
+        SPAM = 'Spam', 'Spam'
+        INAPPROPRIATE_CONTENT = 'Inappropriate Content', 'Inappropriate Content'
+        DIDNOT_APPEAR = "Didnot Appear", "Didnot Appear"
+        FAKE_BOOK = "Fake Book", "Fake Book"
+        WRONG_MEET =  "Wrong Trade Meet Place", "Wrong Trade Meet Place"
 
     reported_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reports_submitted')
     reported_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reports_received')
@@ -131,13 +133,15 @@ class Rating(models.Model):
             MinValueValidator(0),  
             MaxValueValidator(5)  
         ])
+    class Meta:
+        unique_together =['rater', 'user']
 
 class TradeMeet(models.Model):
     id = models.BigAutoField(primary_key=True, auto_created=True)
     date = models.DateField()
     time = models.TimeField()
     place = models.CharField(max_length=200)
-    
+    created_date = models.DateTimeField(auto_now_add=True)
     DISTRICT_CHOICES = [
         ('Achham', 'Achham'), ('Arghakhanchi', 'Arghakhanchi'), ('Baglung', 'Baglung'),
         ('Baitadi', 'Baitadi'), ('Bajhang', 'Bajhang'), ('Bajura', 'Bajura'),

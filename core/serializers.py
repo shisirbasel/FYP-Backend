@@ -1,7 +1,9 @@
 from rest_framework import serializers
-from core.models import Book, Genre, User, TradeRequest, Notification, Report, TradeMeet
-
-
+from core.models import Book, Genre, User, TradeRequest, Notification, Report, TradeMeet, Rating
+from django.utils.encoding import force_bytes, smart_str
+from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
+from django.contrib.auth.tokens import PasswordResetTokenGenerator
+from core.emails import send_password_reset_email
 class GetGenresSerializer(serializers.ModelSerializer):
      class Meta:
          model = Genre
@@ -154,8 +156,7 @@ class GetTradeRequestSerializer(serializers.ModelSerializer):
     class Meta:
         model = TradeRequest
         fields = ['id', 'user', 'requested_book', 'offered_book', 'status']
-
-
+    
 
 class NotificationSerializer(serializers.ModelSerializer):
     date = serializers.SerializerMethodField()
@@ -169,6 +170,13 @@ class NotificationSerializer(serializers.ModelSerializer):
 
 
 class ReportSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Report
+        fields = ['reported_by','reported_user','description','type']
+
+class ViewReportSerializer(serializers.ModelSerializer):
+    reported_by = ProfileSerializer()
+    reported_user = ProfileSerializer()
     class Meta:
         model = Report
         fields = ['reported_by','reported_user','description','type']
@@ -187,16 +195,68 @@ class SetTradeMeetSerializer(serializers.ModelSerializer):
         model = TradeMeet
         fields = ['date','time','place','district','traderequest','sender','receiver']
     
+class RateUserSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Rating
+        fields = ['rater', 'user', 'rating']
+
+    def create(self, validated_data):
+        rating_value = validated_data.get('rating')
+
+        if rating_value > 5:
+            raise serializers.ValidationError("Maximum Rating is 5.")
+        if rating_value < 0:
+            raise serializers.ValidationError("Minimum Rating is 0.")
+
+        return Rating.objects.create(**validated_data)
+
+
+class CheckUserRatingSerializer(serializers.ModelSerializer):  
+    class Meta:
+        model = Rating
+        fields = ['rater', 'user', 'rating']
+
+
+class SendPasswordResetEmailSerializer(serializers.Serializer):
+    email = serializers.EmailField(max_length = 255)
+    class Meta:
+        fields = ["email"]
+    
     def validate(self, obj):
-        traderequest = obj.get('traderequest')
+        email = obj.get('email')
+        if User.objects.filter(email = email).exists():
+            user = User.objects.get(email = email)
+            uid = urlsafe_base64_encode(force_bytes(user.id))
+            token = PasswordResetTokenGenerator().make_token(user)
+            print('Password Reset Token', token)
+            link = "http://localhost:3000/forgot-password/reset/" + uid+'/'+token
+            send_password_reset_email(user.email, link)
+            return obj
+        else :
+            raise serializers.ValidationError("Email not found")
 
-        existing_trade_meet = TradeMeet.objects.filter(
-            traderequest=traderequest
-        ).first()
+class ResetPasswordSerializer(serializers.Serializer):
+    password = serializers.CharField(max_length=255, style={'input_type':'password'}, write_only=True)
+    password2 = serializers.CharField(max_length=255, style={'input_type':'password'}, write_only=True)
+    class Meta:
+        fields = ['password', 'password2']
 
-        if existing_trade_meet:
-            existing_trade_meet.delete()
-
-        return obj
-
-
+    def validate(self, obj):
+        try:
+            password = obj.get('password')
+            password2 = obj.get('password2')
+            uid = self.context.get('uid')
+            token = self.context.get('token')
+            if password != password2:
+                raise serializers.ValidationError("Password and Confirm Password doesn't match")
+            id = smart_str(urlsafe_base64_decode(uid))
+            user = User.objects.get(id=id)
+            if not PasswordResetTokenGenerator().check_token(user, token):
+                raise serializers.ValidationError('Link is expired or invalid.')
+            user.set_password(password)
+            user.save()
+            return obj
+        except Exception:
+            PasswordResetTokenGenerator().check_token(user, token)
+            raise serializers.ValidationError('Link is expired or invalid')

@@ -14,5 +14,10 @@ def send_otp(email):
     user_obj.save()
 
 
+def send_password_reset_email(email, link):
+    subject = "Reset Password Link"
+    message = "Please click on this link to reset the password: " + link
+    email_from = settings.EMAIL_HOST_USER
+    send_mail(subject,message,email_from,[email])
 
 

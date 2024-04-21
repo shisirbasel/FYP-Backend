@@ -54,6 +54,9 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    
+    'django_rest_passwordreset',
+    'rest_framework_simplejwt.token_blacklist',
      
     #added apps
     'core',
@@ -84,6 +87,9 @@ REST_FRAMEWORK = {
         'rest_framework.parsers.JSONParser',
         # Add other parsers if needed
     ],
+
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
+    'PAGE_SIZE': 10
 }
 
 SIMPLE_JWT = {
@@ -100,6 +106,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'bookrade.middleware.AuthMiddleware',
 ]
 
 ROOT_URLCONF = 'bookrade.urls'
@@ -128,11 +135,14 @@ WSGI_APPLICATION = 'bookrade.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql_psycopg2',
+        'NAME': 'bookrade', 
+        'USER': 'postgres',
+        'PASSWORD': 'shisir',
+        'HOST': '127.0.0.1', 
+        'PORT': '5432',
     }
 }
-
 
 # Password validation
 # https://docs.djangoproject.com/en/4.1/ref/settings/#auth-password-validators
@@ -179,9 +189,9 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media/'
 
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_PORT = 587
-EMAIL_HOST_USER ="bookrade.mails@gmail.com"
-EMAIL_HOST_PASSWORD ="wcvtfovmkktdeleg"
+EMAIL_BACKEND = env("DJANGO_EMAIL_BACKEND", default="")
+EMAIL_HOST =  env("DJANGO_EMAIL_HOST", default="")
+EMAIL_PORT =  env("DJANGO_EMAIL_PORT", default="")
+EMAIL_HOST_USER = env("DJANGO_EMAIL_HOST_USER", default="")
+EMAIL_HOST_PASSWORD = env("DJANGO_EMAIL_HOST_PASSWORD", default="")
 EMAIL_USE_TLS = True
