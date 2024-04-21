@@ -2,10 +2,11 @@ from channels.generic.websocket import WebsocketConsumer
 from asgiref.sync import async_to_sync
 import json
 from django.db.models import Q
-from core.models import TradeRequest, User
+from core.models import TradeRequest, User, Notification
 from chat.models import Message
 from chat.serializers import MessageSerializer
 from core.serializers import ProfileSerializer
+
 class ChatConsumer(WebsocketConsumer):
 
     def connect(self):
@@ -63,6 +64,15 @@ class ChatConsumer(WebsocketConsumer):
             text=message_text,
             receiver=requested_user
         )
+
+        notification_queryset = Notification.objects.filter(message=f"You have received a new message from {user.username}", user=requested_user, seen=False)
+
+        if notification_queryset.exists():
+            notification = notification_queryset.first()
+            notification.message = f"You have received {notification_queryset.count() + 1} new messages from {user.username}"
+            notification.save()
+        else:
+            Notification.objects.create(message=f"You have received a new message from {user.username}", user=requested_user)
 
         # Serialize message and friend
         serialized_message = MessageSerializer(
