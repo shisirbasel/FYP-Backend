@@ -66,10 +66,15 @@ class ChatConsumer(WebsocketConsumer):
         )
 
         notification_queryset = Notification.objects.filter(message=f"You have received a new message from {user.username}", user=requested_user, seen=False)
+        notification = Notification.objects.filter(message__icontains="new messages from", user=requested_user, seen=False).first()
 
-        if notification_queryset.exists():
+        if notification:
+            message_count = int(notification.message.split()[3])
+            notification.message = f"You have received {message_count + 1} new messages from {requested_user.username}"
+            notification.save()
+        elif notification_queryset.exists():
             notification = notification_queryset.first()
-            notification.message = f"You have received {notification_queryset.count() + 1} new messages from {user.username}"
+            notification.message = f"You have received {notification_queryset.count() + 1} new messages from {requested_user.username}"
             notification.save()
         else:
             Notification.objects.create(message=f"You have received a new message from {user.username}", user=requested_user)
