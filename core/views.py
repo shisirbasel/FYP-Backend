@@ -8,7 +8,8 @@ from core.models import User, Book, Like, Genre, TradeRequest, Notification, Rep
 from django.contrib.auth import authenticate,login
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.shortcuts import get_object_or_404
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from core.custom_permission import IsNotAdminUser
 from core.emails import send_otp
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django.db.models import Q, Count, Avg, Max
@@ -38,7 +39,7 @@ class ShowUsersView(APIView):
         return Response(serializer.data, status=200)
     
 class UserView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsNotAdminUser]
     def get(self,request,username):
         user = get_object_or_404(User, username = username)
         if user.is_superuser:
@@ -56,9 +57,10 @@ class UserView(APIView):
         return Response(serializer.data, status = 200)
     
 class UserWithIDView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsNotAdminUser]
     def get(self,request,id):
         user = get_object_or_404(User, id = id)
+
         if user.is_superuser:
             return Response("Cannot View Admin's profile", status=403)
         
@@ -74,7 +76,7 @@ class UserWithIDView(APIView):
         return Response(serializer.data, status = 200)
 
 class CountUserBooks(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsNotAdminUser]
     def get(self, request):
         user = request.user
         books = Book.objects.filter(user = user).count()
@@ -132,7 +134,7 @@ class LoginUserView(APIView):
         
 class AddBookView(APIView):
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsNotAdminUser]
     parser_classes = [MultiPartParser]
 
     def post(self,request):
@@ -158,25 +160,28 @@ class UpdateBookView(APIView):
         return Response(serializer.errors, status=400)
     
 class ShowBooksView(APIView):
+    permission_classes = [IsAuthenticated]
     def get(self,request):
         data = Book.objects.all()
         serializer = ShowBookSerializer(data, many = True)
         return Response(serializer.data)
     
 class DeleteBookView(APIView):
+    permission_classes = [IsAuthenticated]
     def delete(self,request,id):
         book = get_object_or_404(Book,id=id)
         book.delete()
         return Response("Book has been Deleted..", status=200)
     
 class ShowProfileView(APIView):
+    permission_classes = [IsAuthenticated]
     def get(self,request):
         user = request.user
         serializer = ProfileSerializer(user,many = False)
         return Response(serializer.data)
     
 class UpdateProfileView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsNotAdminUser]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
     def patch(self,request):
         user = self.request.user
@@ -200,6 +205,7 @@ class ShowProfilePictureView(APIView):
 
 class UpdatePasswordView(APIView):
     parser_classes = [MultiPartParser]
+    permission_classes = [IsAuthenticated]
     def patch(self, request):
         user = self.request.user
         serializer = UpdatePasswordSerializer(data=request.data)
@@ -240,7 +246,7 @@ class LikeBookView(APIView):
 
     parser_classes = [MultiPartParser]
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsNotAdminUser]
     
     def post(self, request):
         serializer = LikeBookSerializer(data=request.data)
@@ -260,7 +266,7 @@ class LikeBookView(APIView):
         return Response(serializer.errors, status=400)
     
 class CheckLikedView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsNotAdminUser]
     
     def get(self, request, id):
         user = request.user
@@ -270,7 +276,7 @@ class CheckLikedView(APIView):
         return Response({'liked': like_exists}, status=200)
     
 class GetLikedBookView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsNotAdminUser]
 
     def get(self, request):
         user = request.user
@@ -282,7 +288,7 @@ class GetLikedBookView(APIView):
 
 class SendTradeRequestView(APIView):
     parser_classes = [MultiPartParser]
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsNotAdminUser]
 
     def post(self, request):
         serializer = SendTradeRequestSerializer(data=request.data, context={'request': request})
@@ -315,7 +321,7 @@ class CheckTradeRequestView(APIView):
         return Response(data, status=200)
 
 class DeleteTradeRequestView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsNotAdminUser]
 
     def delete(self, request, id):
         user = request.user
@@ -368,7 +374,7 @@ class BookSearchAPIView(APIView):
         return Response(serializer.data, status=200)
     
 class GetUserBooksView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsNotAdminUser]
 
     def get(self, request):
         user = request.user
@@ -386,7 +392,7 @@ class GetOtherUserBooksView(APIView):
         return Response(serializer.data, status = 200)
     
 class GetReceivedTradeRequestsView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsNotAdminUser]
 
     def get(self, request):
         user = request.user
@@ -395,7 +401,7 @@ class GetReceivedTradeRequestsView(APIView):
         return Response(serializer.data, status=200)
 
 class GetSentTradeRequestsView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsNotAdminUser]
 
     def get(self, request):
         user = request.user
@@ -404,7 +410,7 @@ class GetSentTradeRequestsView(APIView):
         return Response(serializer.data, status = 200)
 
 class GetAcceptedTradeReqeustsView(APIView):
-    
+    permission_classes = [IsAuthenticated, IsNotAdminUser]
     def get(self, request):
         user = request.user
         requests = TradeRequest.objects.filter(Q(requested_book__user = user) | Q(user = user), status = TradeRequest.RequestStatus.ACCEPTED).order_by("-request_date")
@@ -412,6 +418,8 @@ class GetAcceptedTradeReqeustsView(APIView):
         return Response(serializer.data, status = 200)
 
 class GetRejectedTradeRequestsView(APIView):
+    permission_classes = [IsAuthenticated, IsNotAdminUser]
+
     def get(self, request):
         user = request.user
         requests = TradeRequest.objects.filter(Q(requested_book__user = user) | Q(user = user), status = TradeRequest.RequestStatus.REJECTED).order_by("-request_date")
@@ -420,7 +428,7 @@ class GetRejectedTradeRequestsView(APIView):
     
 
 class RejectTradeRequestView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsNotAdminUser]
 
     def patch(self, request, id):
         trade_request = get_object_or_404(TradeRequest,id=id)
@@ -432,7 +440,7 @@ class RejectTradeRequestView(APIView):
         return Response("Trade Request Rejected", status=200)
 
 class AcceptTradeRequestView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsNotAdminUser]
 
     def patch(self, request, id):
 
@@ -450,7 +458,6 @@ class AcceptTradeRequestView(APIView):
 
         Notification.objects.create(user = trade_request.user, message = f"Your Traderequest for {requested_book.title} was accepted.")
         
-        
         for request in other_requests:
             request.status = TradeRequest.RequestStatus.INVALID
             request.save()
@@ -458,7 +465,7 @@ class AcceptTradeRequestView(APIView):
         return Response("Trade Request Accepted", status=200)
 
 class CountUnseenRequestView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsNotAdminUser]
 
     def get(self, request):
         user = request.user
@@ -468,7 +475,7 @@ class CountUnseenRequestView(APIView):
         return Response({"count":count}, status= 200)
 
 class SeeRequestsView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsNotAdminUser]
 
     def get(self, request):
         user = request.user
@@ -482,6 +489,7 @@ class SeeRequestsView(APIView):
         return Response("Trade Requests Seen", status=200)
 
 class TopTradeMonthsView(APIView):
+    permission_classes = [IsAdminUser]
     def get(self, request):
         # Get the current year
         current_year = timezone.now().year
@@ -499,6 +507,7 @@ class TopTradeMonthsView(APIView):
 
 
 class BookDistributionView(APIView):
+    permission_classes = [IsAdminUser]
     def get(self, request):
         genres = Genre.objects.all()
 
@@ -511,6 +520,7 @@ class BookDistributionView(APIView):
         return Response(distribution, status=200)
 
 class CountDetailsView(APIView):
+    permission_classes = [IsAdminUser]
     def get(self, request):
         books = Book.objects.all().count()
         users = User.objects.exclude(email__endswith = '@admin.com').count()
@@ -522,6 +532,7 @@ class CountDetailsView(APIView):
     
 
 class DeleteUserView(APIView):
+    permission_classes = [IsAdminUser]
     def delete(self,request,username):
         user = get_object_or_404(User,username= username)
         user.delete()
@@ -558,20 +569,20 @@ class ConnectedUsersView(APIView):
         return Response(serializer.data, status = 200)
     
 class GetNotificationsView(APIView):
-    permission_classes =[IsAuthenticated]
+    permission_classes =[IsAuthenticated, IsNotAdminUser]
     def get(self, request):
         notifications = Notification.objects.filter(user = request.user).order_by('-date')
         serializer = NotificationSerializer(notifications, many = True)
         return Response(serializer.data, status = 200)
 
 class CountUnseenNotificationsView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsNotAdminUser]
     def get(self, request):
         count = Notification.objects.filter(user = request.user, seen = False).count()
         return Response({'count': count}, status= 200)
 
 class SeeNotificationsView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsNotAdminUser]
     def patch(self, request):
         notifications = Notification.objects.filter(user = request.user, seen = False)
         for notification in notifications:
@@ -581,6 +592,7 @@ class SeeNotificationsView(APIView):
 
 
 class RecommendBooksView(APIView):
+    permission_classes = [IsAuthenticated, IsNotAdminUser]
     def get(self, request):
         user = request.user
         chosen_genres = user.genre.all()
@@ -593,13 +605,14 @@ class RecommendBooksView(APIView):
         return Response(serializer.data, status=200)
 
 class ReportTypeView(APIView):
+    permission_classes = [IsAuthenticated]
     def get(self, request):
         report_types = dict(Report.ReportType.choices)
         return Response({'report_types': report_types}, status=200)
 
 class ReportUserView(APIView):
     parser_classes = [MultiPartParser]
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsNotAdminUser]
     def post(self, request, id):
         reported_user_id = id
         reported_by_user = request.user
@@ -626,7 +639,7 @@ class GetDistrictsView(APIView):
 
 class SetTradeMeetView(APIView):
     parser_classes=[MultiPartParser]
-    permission_classes=[IsAuthenticated]
+    permission_classes=[IsAuthenticated, IsNotAdminUser]
 
     def post(self, request):
         sender = request.user
@@ -649,7 +662,8 @@ class SetTradeMeetView(APIView):
         
         return Response(serializer.errors, status=400)
 
-class GetTradeMeetView(APIView):
+class GetTradeMeetView(APIView):  
+    permission_classes=[IsAuthenticated, IsNotAdminUser]
     def get(self, request, id):
         trademeet = TradeMeet.objects.filter(traderequest__id = id).order_by('-date').first()
         serializer = ViewTradeMeetSerializer(trademeet, many = False)
@@ -657,7 +671,7 @@ class GetTradeMeetView(APIView):
 
 class RateUserView(APIView):
     parser_classes = [MultiPartParser]
-    permission_classes = [IsAuthenticated]
+    permission_classes=[IsAuthenticated, IsNotAdminUser]
 
     def post(self, request, id):
         data = {
@@ -675,7 +689,8 @@ class RateUserView(APIView):
 
 class UpdateUserRatingView(APIView):
     parser_classes = [MultiPartParser]
-    permission_classes = [IsAuthenticated]
+
+    permission_classes=[IsAuthenticated, IsNotAdminUser]
 
     def patch(self, request, username):
         rater = request.user
@@ -694,7 +709,8 @@ class UpdateUserRatingView(APIView):
         return Response(serializer.errors, status=400)
 
 class CheckUserRatingView(APIView):
-    permission_classes = [IsAuthenticated]
+
+    permission_classes=[IsAuthenticated, IsNotAdminUser]
     
     def get(self, request, username):
         rater = request.user
@@ -708,14 +724,25 @@ class CheckUserRatingView(APIView):
             return Response("Rating does not exist.", status=404)
 
 class GetAvgUserRatingView(APIView):
-    permission_classes = [IsAuthenticated]
+
+    permission_classes=[IsAuthenticated, IsNotAdminUser]
+
     def get(self, request, username):
         user_ratings = Rating.objects.filter(user__username=username)
         avg_rating = user_ratings.aggregate(Avg('rating'))['rating__avg']
         return Response({"rating": avg_rating}, status=200)
 
+class GetOwnAvgUserRatingView(APIView):
+
+    permission_classes=[IsAuthenticated, IsNotAdminUser]
+
+    def get(self, request):
+        user_ratings = Rating.objects.filter(user = request.user)
+        avg_rating = user_ratings.aggregate(Avg('rating'))['rating__avg']
+        return Response({"rating": avg_rating}, status=200)
+
 class SuspendUserView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes=[IsAuthenticated, IsAdminUser]
     def patch(self, request, id):
         user = User.objects.get(id=id)
         user.suspend_count += 1
@@ -729,21 +756,21 @@ class SuspendUserView(APIView):
         return Response("User Suspended Successfully", status=200)
 
 class ViewAllReports(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes=[IsAuthenticated, IsAdminUser]
     def get(self, request):
         reports = Report.objects.all().order_by('-report_date')
         serializer = ViewReportSerializer(reports, many = True)
         return Response(serializer.data,status=200)
 
 class CheckUserStatusView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes=[IsAuthenticated, IsAdminUser]
     def get(self, request, id):
         status = User.objects.get(id = id).is_suspended
         return Response({'status': status}, status = 200)
 
 
 class GetAllTradeRequestsView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes=[IsAuthenticated, IsAdminUser]
     pagination_class = PageNumberPagination 
     
     def get(self, request):
@@ -760,6 +787,7 @@ class GetAllTradeRequestsView(APIView):
         return Response(serializer.data, status=200)
 
 class GetAllTradeMeetsView(APIView):
+    permission_classes=[IsAuthenticated, IsAdminUser]
     def get(self, request):
         # Annotate the TradeMeet queryset to get the maximum created_date for each traderequest
         latest_dates = TradeMeet.objects.values('traderequest_id').annotate(max_date=Max('created_date'))
@@ -775,6 +803,7 @@ class GetAllTradeMeetsView(APIView):
         return Response(serializer.data, status=200)
     
 class GetTodayTradeMeetView(APIView):
+    permission_classes=[IsAuthenticated, IsAdminUser]
     def get(self, request):
         today_date = datetime.now().date()
         
@@ -791,6 +820,7 @@ class GetTodayTradeMeetView(APIView):
         return Response(serializer.data, status=200)
     
 class CheckAcceptedReqeustView(APIView):
+    permission_classes=[IsAuthenticated, IsAdminUser]
     permission_classes = [IsAuthenticated]
     def get(self, request, username):
         user =  User.objects.get(username = username)
@@ -800,6 +830,7 @@ class CheckAcceptedReqeustView(APIView):
 
     
 class GetTomorrowTradeMeetView(APIView):
+    permission_classes=[IsAuthenticated, IsAdminUser]
     def get(self, request):
         tomorrow_date = datetime.now().date() + timedelta(days=1)
         
@@ -816,6 +847,7 @@ class GetTomorrowTradeMeetView(APIView):
         return Response(serializer.data, status=200)
 
 class GetWeekTradeMeetView(APIView):
+    permission_classes=[IsAuthenticated, IsAdminUser]
     def get(self, request):
         tomorrow_date = datetime.now().date() + timedelta(days=1)
         end_of_week = datetime.now().date() + timedelta(days=7)
@@ -839,7 +871,6 @@ class SendPasswordResetEmailView(APIView):
             return Response("Password Reset Link Sent.", status= 201)
         print(serializer.errors)
         return Response(serializer.errors, status= 400)
-
 
 class ResetPasswordView(APIView):
     def post(self, request, uid, token):

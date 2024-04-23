@@ -6,7 +6,7 @@ from core.views import (
     CheckLikedView, GetLikedBookView,GetReceivedTradeRequestsView, AcceptTradeRequestView, RejectTradeRequestView, GetSentTradeRequestsView,
     CountUnseenRequestView, SeeRequestsView, TopTradeMonthsView, BookDistributionView, CountDetailsView, DeleteUserView, ConnectedUsersView,
     UserView,GetNotificationsView, CountUnseenNotificationsView, SeeNotificationsView, GetAcceptedTradeReqeustsView, GetRejectedTradeRequestsView, RecommendBooksView, GetOtherUserBooksView, ReportTypeView, ReportUserView, GetDistrictsView, SetTradeMeetView, GetTradeMeetView, UserWithIDView,
-    RateUserView, UpdateUserRatingView, CheckUserRatingView, GetAvgUserRatingView, SuspendUserView, ViewAllReports, CheckUserStatusView, GetAllTradeMeetsView, GetTodayTradeMeetView,GetAllTradeRequestsView, GetTomorrowTradeMeetView, GetWeekTradeMeetView,CheckAcceptedReqeustView, SendPasswordResetEmailView,ResetPasswordView
+    RateUserView, UpdateUserRatingView, CheckUserRatingView, GetAvgUserRatingView, SuspendUserView, ViewAllReports, CheckUserStatusView, GetAllTradeMeetsView, GetTodayTradeMeetView,GetAllTradeRequestsView, GetTomorrowTradeMeetView, GetWeekTradeMeetView,CheckAcceptedReqeustView, SendPasswordResetEmailView,ResetPasswordView, GetOwnAvgUserRatingView
             )
 
 from rest_framework_simplejwt.views import TokenRefreshView, TokenBlacklistView
@@ -63,6 +63,7 @@ urlpatterns = [
     path("update_user_rating/<str:username>/",UpdateUserRatingView.as_view(), name="update_rate_user"),
     path("get_user_rating/<str:username>/",CheckUserRatingView.as_view(), name="get_rate_user"),
     path("avg_user_rating/<str:username>/",GetAvgUserRatingView.as_view(), name="get_rate_user"),
+    path("own_rating/",GetOwnAvgUserRatingView.as_view(), name="own_rating"),
     path("reports/",ViewAllReports.as_view(), name="reports"),
     path("suspend/<int:id>/",SuspendUserView.as_view(), name="suspend_user"),
     path("status/<int:id>/",CheckUserStatusView.as_view(), name="user_status"),
