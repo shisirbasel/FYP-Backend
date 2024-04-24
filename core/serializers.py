@@ -54,6 +54,12 @@ class BookSerializer(serializers.ModelSerializer):
         model = Book
         fields = ['title', 'author', 'genre', 'upload_date', 'user', 'image']
         read_only_fields = ['user']
+    
+    def validate(self, obj):
+        genre = obj.get('genre')
+        if not genre:
+            raise serializers.ValidationError("Genre must be provided.")
+        return obj
 
 class ShowBookSerializer(serializers.ModelSerializer):
     user = UserSerializer()

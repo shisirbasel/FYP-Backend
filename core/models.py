@@ -47,7 +47,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     otp = models.CharField(max_length=4, null=True)
     is_verified = models.BooleanField(default=False)
     is_suspended = models.BooleanField(default = False)
-    suspended_date = models.DateField(null = True)
+    suspended_date = models.DateField(null = True, blank = True)
     suspend_count = models.IntegerField(default = 0)
     is_banned = models.BooleanField(default = False)
 
@@ -78,6 +78,7 @@ class Report(models.Model):
         DIDNOT_APPEAR = "Didnot Appear", "Didnot Appear"
         FAKE_BOOK = "Fake Book", "Fake Book"
         WRONG_MEET =  "Wrong Trade Meet Place", "Wrong Trade Meet Place"
+        OTHER = "Other", "Other"
 
     reported_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reports_submitted')
     reported_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reports_received')

@@ -133,7 +133,6 @@ class LoginUserView(APIView):
         return Response(serializer.errors, status=400)
         
 class AddBookView(APIView):
-
     permission_classes = [IsAuthenticated, IsNotAdminUser]
     parser_classes = [MultiPartParser]
 
@@ -150,6 +149,7 @@ class AddBookView(APIView):
 
 class UpdateBookView(APIView):
     parser_classes =[MultiPartParser]
+    permission_classes = [IsAuthenticated]
     def patch(self,request,id):
         book = get_object_or_404(Book, id = id)
         serializer = BookSerializer(instance=book, data = request.data, partial=True)
@@ -202,7 +202,6 @@ class ShowProfilePictureView(APIView):
         serializer = ProfilePictureSerializer(instance=user, many=False)
         return Response(serializer.data)
 
-
 class UpdatePasswordView(APIView):
     parser_classes = [MultiPartParser]
     permission_classes = [IsAuthenticated]
@@ -243,9 +242,7 @@ class VerifyOTPView(APIView):
 
 
 class LikeBookView(APIView):
-
     parser_classes = [MultiPartParser]
-
     permission_classes = [IsAuthenticated, IsNotAdminUser]
     
     def post(self, request):
@@ -298,7 +295,7 @@ class SendTradeRequestView(APIView):
             else:
                 serializer.save(user=request.user)
                 
-                return Response({'message': 'Trade request created successfully.'}, status=200)
+                return Response({'message': 'Trade request created successfully.'}, status=201)
         return Response(serializer.errors, status=400)
 
 class CheckTradeRequestView(APIView):
@@ -308,7 +305,7 @@ class CheckTradeRequestView(APIView):
         user = request.user
         requested_book = get_object_or_404(Book, pk=id)
         trade_request = TradeRequest.objects.exclude(status  = TradeRequest.RequestStatus.REJECTED)
-        trade_request = trade_request.filter(user=user, requested_book=requested_book).exists()
+        trade_request = trade_request.filter(user=user, requested_book=requested_book, status = TradeRequest.RequestStatus.PENDING).exists()
         
         data = {
             'trade_request': trade_request,
@@ -413,7 +410,8 @@ class GetAcceptedTradeReqeustsView(APIView):
     permission_classes = [IsAuthenticated, IsNotAdminUser]
     def get(self, request):
         user = request.user
-        requests = TradeRequest.objects.filter(Q(requested_book__user = user) | Q(user = user), status = TradeRequest.RequestStatus.ACCEPTED).order_by("-request_date")
+        requests = TradeRequest.objects.filter(Q(requested_book__user = user) | Q(user = user),
+        status = TradeRequest.RequestStatus.ACCEPTED).order_by("-request_date")
         serializer = GetTradeRequestSerializer(requests, many = True)
         return Response(serializer.data, status = 200)
 
@@ -422,7 +420,8 @@ class GetRejectedTradeRequestsView(APIView):
 
     def get(self, request):
         user = request.user
-        requests = TradeRequest.objects.filter(Q(requested_book__user = user) | Q(user = user), status = TradeRequest.RequestStatus.REJECTED).order_by("-request_date")
+        requests = TradeRequest.objects.filter(Q(requested_book__user = user) | Q(user = user), 
+        status = TradeRequest.RequestStatus.REJECTED).order_by("-request_date")
         serializer = GetTradeRequestSerializer(requests, many = True)
         return Response(serializer.data, status = 200)
     
