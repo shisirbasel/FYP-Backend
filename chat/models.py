@@ -16,7 +16,7 @@ class Message(models.Model):
         on_delete = models.CASCADE
     )
     text = models.TextField()
-    created = models.DateField(auto_now_add = True)
+    created = models.DateTimeField(auto_now_add = True)
 
     def __str__(self):
         return self.sender.username + '->' + self.receiver.username + ': ' + self.text

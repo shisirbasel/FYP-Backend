@@ -35,7 +35,7 @@ class ChatConsumer(WebsocketConsumer):
         data = json.loads(text_data)
         data_source = data.get('source')
 
-        print('receive', json.dumps(data, indent=2))
+        # print('receive', json.dumps(data, indent=2))
 
         if data_source == "message.send":
             self.receive_message_send(data)
@@ -111,7 +111,6 @@ class ChatConsumer(WebsocketConsumer):
     def receive_message_list(self, data):
         user = self.scope['user']
         id = data.get('id')
-        print(id)
         try:
             requested_user = User.objects.get(id=id)
         except User.DoesNotExist:
@@ -131,7 +130,7 @@ class ChatConsumer(WebsocketConsumer):
             receiver = requested_user) | Q(sender = requested_user,
             receiver = user),
             trade_request = traderequest
-        ).order_by ('-created')
+        ).order_by ('created')
         serialized_message = MessageSerializer(
                 messages,
                 many=True,

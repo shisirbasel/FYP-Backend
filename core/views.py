@@ -12,11 +12,12 @@ from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from core.custom_permission import IsNotAdminUser
 from core.emails import send_otp
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
-from django.db.models import Q, Count, Avg, Max
+from django.db.models import Q, Count, Avg, Max, OuterRef, Subquery
 from django.utils import timezone
 import calendar
 from datetime import datetime, timedelta
 from rest_framework.pagination import PageNumberPagination
+from chat.models import Message
 
 class RegisterUserView(APIView):
     def post(self,request):
@@ -542,30 +543,40 @@ class ConnectedUsersView(APIView):
 
     def get(self, request):
         search_query = request.query_params.get('search', None)
-        connected_user_ids = set()
-        
-        user_ids_with_requests = TradeRequest.objects.filter(user=request.user).values_list('requested_book__user_id', flat=True).distinct()
-        requested_user_ids = TradeRequest.objects.filter(requested_book__user=request.user).values_list('user_id', flat=True).distinct()
-        
-        connected_user_ids.update(user_ids_with_requests)
-        connected_user_ids.update(requested_user_ids)
+        current_user = request.user
 
-        connected_user_ids.discard(request.user.id)
+        # Get all connected user ids based on TradeRequest model
+        user_ids_with_requests = TradeRequest.objects.filter(user=current_user).values_list('requested_book__user_id', flat=True).distinct()
+        requested_user_ids = TradeRequest.objects.filter(requested_book__user=current_user).values_list('user_id', flat=True).distinct()
+
+        connected_user_ids = set(user_ids_with_requests).union(set(requested_user_ids))
+        connected_user_ids.discard(current_user.id)
 
         if search_query:
-            connected_users = User.objects.filter(id__in=connected_user_ids).filter(
+            # Filter users with whom at least one trade request exists and match the search query
+            connected_users = User.objects.filter(
+                id__in=connected_user_ids
+            ).filter(
                 Q(username__icontains=search_query) | 
                 Q(first_name__icontains=search_query) | 
                 Q(last_name__icontains=search_query)
             )
         else:
-            current_user = request.user
+            # Subquery to get the latest message timestamp for each user
+            latest_message_subquery = Message.objects.filter(
+                Q(sender=OuterRef('pk'), receiver=current_user) | 
+                Q(receiver=OuterRef('pk'), sender=current_user)
+            ).order_by('-created').values('created')[:1]
+
+            # Get connected users ordered by the latest message timestamp
             connected_users = User.objects.filter(
                 Q(sender__receiver=current_user) | Q(receiver__sender=current_user)
-            ).distinct()
+            ).distinct().annotate(
+                latest_message=Subquery(latest_message_subquery)
+            ).order_by('-latest_message')
 
         serializer = ProfileSerializer(connected_users, many=True)
-        return Response(serializer.data, status = 200)
+        return Response(serializer.data, status=200)
     
 class GetNotificationsView(APIView):
     permission_classes =[IsAuthenticated, IsNotAdminUser]
@@ -786,19 +797,23 @@ class GetAllTradeRequestsView(APIView):
         return Response(serializer.data, status=200)
 
 class GetAllTradeMeetsView(APIView):
-    permission_classes=[IsAuthenticated, IsAdminUser]
-    def get(self, request):
-        # Annotate the TradeMeet queryset to get the maximum created_date for each traderequest
-        latest_dates = TradeMeet.objects.values('traderequest_id').annotate(max_date=Max('created_date'))
-        
-        # Get the distinct TradeRequest objects with the most recent created_date
-        distinct_traderequests = TradeMeet.objects.filter(
-            id__in=[item['traderequest_id'] for item in latest_dates]
-        ).order_by('traderequest_id', '-created_date').distinct('traderequest_id')
-        
+    permission_classes = [IsAuthenticated, IsAdminUser]
 
-        serializer = ViewTradeMeetSerializer(distinct_traderequests, many=True)
-        
+    def get(self, request):
+        # Annotate TradeRequest with the latest created_date of its associated TradeMeet instances
+        trade_requests = TradeRequest.objects.annotate(
+            latest_meet_date=Max('trademeet__created_date')
+        ).order_by('-latest_meet_date')
+
+        # Prefetch related TradeMeet instances for each TradeRequest
+        trade_requests = trade_requests.prefetch_related('trademeet_set')
+
+        # Gather all TradeMeet instances grouped by TradeRequest
+        trademeets = []
+        for trade_request in trade_requests:
+            trademeets.extend(trade_request.trademeet_set.all())
+
+        serializer = ViewTradeMeetSerializer(trademeets, many=True)
         return Response(serializer.data, status=200)
     
 class GetTodayTradeMeetView(APIView):
