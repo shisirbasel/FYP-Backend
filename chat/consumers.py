@@ -6,7 +6,6 @@ from core.models import TradeRequest, User, Notification
 from chat.models import Message
 from chat.serializers import MessageSerializer
 from core.serializers import ProfileSerializer
-
 class ChatConsumer(WebsocketConsumer):
 
     def connect(self):
