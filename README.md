@@ -3,26 +3,6 @@
 ## Overview
 This Django Rest project is built for Bookrade, an online book trading platform. It uses Django 4.1.7 and integrates various packages for authentication, WebSocket communication, and REST API.
 
-## Project Structure
-
-bookrade/
-├── bookrade/
-│ ├── settings.py
-│ ├── urls.py
-│ ├── wsgi.py
-│ └── asgi.py
-├── core/
-│ ├── models.py
-│ ├── views.py
-│ ├── serializers.py
-│ └── ...
-├── chat/
-│ ├── consumers.py
-│ ├── routing.py
-│ └── ...
-├── manage.py
-└── README.md
-
 ## Django Settings
 ## Environment Setup for .env File
 Create a `.env` file in the project root directory with the following content:
